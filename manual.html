@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual do Usuário - TanoCaixaApp</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Estilos específicos para a página de manual */
+    .manual-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+    .manual-header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--cor-borda);
+    }
+    .manual-header h1 {
+      color: var(--cor-primaria);
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+    .manual-header p {
+      color: var(--cor-secundaria);
+      font-size: 1.1rem;
+    }
+    .manual-secao {
+      background: var(--cor-cartao);
+      padding: 24px;
+      border-radius: var(--raio-cartao);
+      border: 1px solid var(--cor-borda);
+      margin-bottom: 24px;
+      box-shadow: var(--sombra-suave);
+    }
+    .manual-secao h2 {
+      color: var(--cor-primaria);
+      margin-top: 0;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .manual-secao p, .manual-secao li {
+      color: var(--cor-texto);
+      font-size: 1rem;
+    }
+    .manual-secao ul {
+      padding-left: 20px;
+    }
+    .manual-secao li {
+      margin-bottom: 8px;
+    }
+    .btn-voltar {
+      display: inline-block;
+      background: var(--cor-primaria);
+      color: var(--cor-fundo);
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      margin-top: 20px;
+      transition: opacity 0.2s;
+    }
+    .btn-voltar:hover {
+      opacity: 0.8;
+    }
+    .destaque {
+      color: var(--cor-icone-terracota);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="manual-container">
+    
+    <div class="manual-header">
+      <h1>Manual do Usuário</h1>
+      <p>Tudo o que você precisa saber para dominar o TanoCaixaApp.</p>
+    </div>
+
+    <div class="manual-secao">
+      <h2>👋 Bem-vindo ao TanoCaixaApp</h2>
+      <p>O TanoCaixa foi feito para ser o seu assistente financeiro. Ele é simples, seguro e ajuda você a não esquecer de pagar as contas do seu negócio. Se você trabalha sozinho ou tem um ajudante, o TanoCaixa mantém tudo organizado.</p>
+    </div>
+
+    <div class="manual-secao">
+      <h2>🔐 1. Login e Cadastro</h2>
+      <p>Para começar, crie sua conta clicando em <span class="destaque">"Crie uma agora"</span>. Você ganha 30 dias grátis para testar todos os recursos. Se você for o dono do negócio, você será o <strong>Gestor</strong>.</p>
+    </div>
+
+    <div class="manual-secao">
+      <h2>💸 2. Registrando o Dinheiro (Entradas e Saídas)</h2>
+      <ul>
+        <li><strong>Recebi dinheiro:</strong> Clique no botão verde sempre que fizer uma venda ou receber um pagamento.</li>
+        <li><strong>Paguei algo:</strong> Clique no botão vermelho/terracota quando gastar com fornecedores, luz, água, etc.</li>
+        <li>O aplicativo calcula o seu saldo automaticamente!</li>
+      </ul>
+    </div>
+
+    <div class="manual-secao">
+      <h2>⏰ 3. Contas a Pagar e Avisos</h2>
+      <p>Na seção <strong>"Minhas contas"</strong>, você cadastra o que precisa pagar no futuro (ex: Aluguel da loja, dia 10).</p>
+      <p>O TanoCaixa vai te avisar na <strong>véspera</strong>, no <strong>dia do vencimento</strong> e dar um <strong>último aviso às 20h</strong>. Se estiver ocupado, clique em <span class="destaque">"Mais tarde"</span> no aviso e ele volta em 2 horas.</p>
+      <p>Se você não quer avisos sonoros, basta ir na <strong>Engrenagem (⚙️)</strong> no topo e desligar o som.</p>
+    </div>
+
+    <div class="manual-secao">
+      <h2>📄 4. Área Fiscal</h2>
+      <p>Use o botão amarelo <strong>"Área fiscal"</strong> como um checklist. Adicione tarefas como "Pagar o DAS" ou "Emitir Nota Fiscal". Quando terminar a tarefa na vida real, basta marcar o quadradinho no app.</p>
+    </div>
+
+    <div class="manual-secao">
+      <h2>👥 5. Minha Equipe (Para Gestores)</h2>
+      <p>Se você tem um ajudante ou sócio, clique no ícone <strong>👥 (Equipe)</strong> no topo da tela. Digite o e-mail da pessoa e clique em convidar.</p>
+      <p>A pessoa cria uma conta com esse e-mail e, automaticamente, entra na sua empresa. <strong>O ajudante não vê a auditoria nem os botões de gestão.</strong></p>
+    </div>
+
+    <div class="manual-secao">
+      <h2>🛡️ 6. Trilha de Auditoria</h2>
+      <p>Sabe aquele medo de "quem apagou esse lançamento?"? Clique no escudo <strong>🛡️ (Auditoria)</strong>. Ele mostra o histórico de tudo o que foi criado, pago ou apagado, com o nome de quem fez e a hora exata.</p>
+    </div>
+
+    <div class="manual-secao">
+      <h2>📊 7. Relatórios em PDF</h2>
+      <p>Na seção "Últimas movimentações", clique em <strong>"Baixar PDF"</strong>. O sistema gera um extrato bancário bonito e profissional do mês atual. Perfeito para enviar para o seu contador!</p>
+    </div>
+
+    <div class="manual-secao">
+      <h2>🔒 8. Privacidade</h2>
+      <p>Se estiver no balcão e um cliente passar, clique no olho <strong>◉</strong> ao lado do saldo. Todos os valores da tela ficarão escondidos (••••). Clique de novo para mostrar.</p>
+    </div>
+
+    <div style="text-align: center;">
+      <a href="index.html" class="btn-voltar">Voltar para o Aplicativo</a>
+    </div>
+
+  </div>
+</body>
+</html>

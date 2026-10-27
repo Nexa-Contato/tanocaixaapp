@@ -1,0 +1,16 @@
+{
+  "name": "tanocaixa-backend",
+  "version": "1.0.0",
+  "description": "Servidor do TanoCaixaApp",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "pdfkit": "^0.20.2",
+    "pg": "^8.23.1"
+  }
+}
