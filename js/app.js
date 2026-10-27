@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const senha = document.getElementById("cad-senha").value;
 
       try {
-        const resposta = await fetch("http://localhost:3000/api/auth/cadastro", {
+        const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/auth/cadastro", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nome, email, senha })
@@ -95,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const senha = document.getElementById("login-senha").value;
 
       try {
-        const resposta = await fetch("http://localhost:3000/api/auth/login", {
+        const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, senha })
@@ -240,7 +240,7 @@ function configurarBotaoPDF() {
     if (!usuarioLogado) return;
     const dataAtual = new Date();
     const mesAtual = dataAtual.toISOString().substring(0, 7); 
-    window.open(`http://localhost:3000/api/relatorio?empresa_id=${usuarioLogado.empresa_id}&mes=${mesAtual}`, '_blank');
+    window.open(`https://tanocaixa-backend.onrender.com/api/relatorio?empresa_id=${usuarioLogado.empresa_id}&mes=${mesAtual}`, '_blank');
   });
 }
 
@@ -273,7 +273,7 @@ async function buscarLogsAuditoria() {
   lista.innerHTML = `<li class="historico-vazio">Carregando trilha de auditoria...</li>`;
 
   try {
-    const resposta = await fetch(`http://localhost:3000/api/auditoria?empresa_id=${usuarioLogado.empresa_id}`);
+    const resposta = await fetch(`https://tanocaixa-backend.onrender.com/api/auditoria?empresa_id=${usuarioLogado.empresa_id}`);
     if (resposta.ok) {
       const logs = await resposta.json();
       renderizarAuditoria(logs);
@@ -349,7 +349,7 @@ function configurarEquipe() {
     const email = document.getElementById("email-convite").value;
 
     try {
-      const resposta = await fetch("http://localhost:3000/api/equipe/convidar", {
+      const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/equipe/convidar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -373,7 +373,7 @@ function configurarEquipe() {
 
 async function buscarEquipe() {
   try {
-    const resposta = await fetch(`http://localhost:3000/api/equipe?empresa_id=${usuarioLogado.empresa_id}`);
+    const resposta = await fetch(`https://tanocaixa-backend.onrender.com/api/equipe?empresa_id=${usuarioLogado.empresa_id}`);
     if (resposta.ok) {
       const dados = await resposta.json();
       renderizarEquipe(dados.membros, dados.convites);
@@ -565,11 +565,11 @@ function verificarAvisos() {
 async function buscarDadosNuvem() {
   if (!usuarioLogado) return;
   try {
-    const resT = await fetch(`http://localhost:3000/api/transacoes?empresa_id=${usuarioLogado.empresa_id}`);
+    const resT = await fetch(`https://tanocaixa-backend.onrender.com/api/transacoes?empresa_id=${usuarioLogado.empresa_id}`);
     if (resT.ok) transacoesNuvem = await resT.json();
-    const resC = await fetch(`http://localhost:3000/api/contas?empresa_id=${usuarioLogado.empresa_id}`);
+    const resC = await fetch(`https://tanocaixa-backend.onrender.com/api/contas?empresa_id=${usuarioLogado.empresa_id}`);
     if (resC.ok) contasNuvem = await resC.json();
-    const resF = await fetch(`http://localhost:3000/api/fiscal?empresa_id=${usuarioLogado.empresa_id}`);
+    const resF = await fetch(`https://tanocaixa-backend.onrender.com/api/fiscal?empresa_id=${usuarioLogado.empresa_id}`);
     if (resF.ok) fiscalNuvem = await resF.json();
   } catch (erro) { console.error(erro); }
 }
@@ -577,7 +577,7 @@ async function buscarDadosNuvem() {
 async function registrarTransacao(tipo, valor, descricao) {
   if (!usuarioLogado) return;
   try {
-    await fetch("http://localhost:3000/api/transacoes", {
+    await fetch("https://tanocaixa-backend.onrender.com/api/transacoes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -643,7 +643,7 @@ function configurarModais() {
       const data = document.getElementById("data-conta").value;
       if (v > 0 && d && data) {
         try {
-          const resposta = await fetch("http://localhost:3000/api/contas", {
+          const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/contas", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id, descricao: d, valor: v, data_vencimento: data })
@@ -669,7 +669,7 @@ function configurarModais() {
       const data = document.getElementById("data-fiscal").value;
       if (d) {
         try {
-          const resposta = await fetch("http://localhost:3000/api/fiscal", {
+          const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/fiscal", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id, descricao: d, data_vencimento: data || null })
@@ -828,7 +828,7 @@ window.excluirTransacao = async function(id) {
   if (confirm(`Deseja apagar o lançamento "${t.descricao}" no valor de ${formatar(parseFloat(t.valor))}?`)) {
     if (confirm("Apagar definitivamente?")) {
       try {
-        await fetch(`http://localhost:3000/api/transacoes/${id}`, {
+        await fetch(`https://tanocaixa-backend.onrender.com/api/transacoes/${id}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
@@ -843,7 +843,7 @@ window.pagarConta = async function(id, descricao, valor) {
   if (confirm(`Confirmar pagamento de "${descricao}" no valor de R$ ${parseFloat(valor).toFixed(2)}?`)) {
     try {
       await registrarTransacao("saida", parseFloat(valor), `Pgto: ${descricao}`);
-      await fetch(`http://localhost:3000/api/contas/${id}`, {
+      await fetch(`https://tanocaixa-backend.onrender.com/api/contas/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
@@ -857,7 +857,7 @@ window.excluirConta = async function(id) {
   if (confirm("Deseja apagar esta conta? (Isso não gera saída no caixa)")) {
     if (confirm("Apagar definitivamente?")) {
       try {
-        await fetch(`http://localhost:3000/api/contas/${id}`, {
+        await fetch(`https://tanocaixa-backend.onrender.com/api/contas/${id}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
@@ -870,7 +870,7 @@ window.excluirConta = async function(id) {
 
 window.alternarTarefaFiscal = async function(id, statusAtual) {
   try {
-    await fetch(`http://localhost:3000/api/fiscal/${id}`, {
+    await fetch(`https://tanocaixa-backend.onrender.com/api/fiscal/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ concluida: !statusAtual })
@@ -883,7 +883,7 @@ window.excluirTarefaFiscal = async function(id) {
   if (confirm("Deseja apagar esta tarefa fiscal?")) {
     if (confirm("Apagar definitivamente?")) {
       try {
-        await fetch(`http://localhost:3000/api/fiscal/${id}`, {
+        await fetch(`https://tanocaixa-backend.onrender.com/api/fiscal/${id}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
