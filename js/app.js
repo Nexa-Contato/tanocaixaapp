@@ -11,7 +11,6 @@ let transacoesNuvem = [];
 let contasNuvem = [];
 let fiscalNuvem = []; 
 
-// Controle de Avisos e Configurações
 let avisosAtivos = true;
 let somAtivo = true;
 let avisosDisparadosHoje = []; 
@@ -22,10 +21,6 @@ const frasesMotivacionais = [
   "Dever cumprido! O seu caixa agradece a organização. Excelente trabalho.",
   "Zero pendências hoje! Isso é gestão de verdade. Aproveite para respirar e curtir o seu negócio."
 ];
-
-/* ========================================
-   CONTROLE DE LOGIN E CADASTRO
-======================================== */
 
 document.addEventListener("DOMContentLoaded", () => {
   try {
@@ -120,19 +115,12 @@ function mostrarPainel(usuario) {
   const nomeEl = document.getElementById("nome-usuario");
   if (nomeEl) nomeEl.textContent = usuario.nome;
 
-  // Regra 1: Mostrar botão de equipe apenas para gestor
   const btnEquipe = document.getElementById("abrir-equipe");
-  if (usuario.cargo === "gestor" && btnEquipe) {
-    btnEquipe.style.display = "grid";
-  }
+  if (usuario.cargo === "gestor" && btnEquipe) btnEquipe.style.display = "grid";
 
-  // NOVO Regra 2: Mostrar botão de Auditoria apenas para gestor
   const btnAuditoria = document.getElementById("abrir-auditoria");
-  if (usuario.cargo === "gestor" && btnAuditoria) {
-    btnAuditoria.style.display = "grid";
-  } else if (btnAuditoria) {
-    btnAuditoria.style.display = "none"; // Esconde do ajudante
-  }
+  if (usuario.cargo === "gestor" && btnAuditoria) btnAuditoria.style.display = "grid";
+  else if (btnAuditoria) btnAuditoria.style.display = "none"; 
 
   configurarTema();
   configurarPrivacidade();
@@ -142,14 +130,11 @@ function mostrarPainel(usuario) {
   configurarBotaoPDF();
   configurarAuditoria(); 
   configurarEquipe(); 
+  configurarEmpresa(); 
   
   atualizarTela();
   setInterval(verificarAvisos, 60000); 
 }
-
-/* ========================================
-   TEMA E PRIVACIDADE
-======================================== */
 
 function configurarTema() {
   const botaoTema = document.getElementById("alternar-tema");
@@ -199,7 +184,7 @@ function configurarLimparDados() {
 }
 
 /* ========================================
-   CONFIGURAÇÕES E PDF
+   CONFIGURAÇÕES (MODAL)
 ======================================== */
 
 function configurarConfiguracoes() {
@@ -222,15 +207,60 @@ function configurarConfiguracoes() {
   btnFecharConfig.addEventListener("click", () => {
     modalConfig.classList.remove("ativo");
     modalConfig.setAttribute("aria-hidden", "true");
+    
     somAtivo = checkSom.checked;
     avisosAtivos = checkAvisos.checked;
     try {
       localStorage.setItem("tc-som", somAtivo);
       localStorage.setItem("tc-avisos", avisosAtivos);
     } catch (e) {}
+    
     if (somAtivo) tocarSom("sucesso");
   });
 }
+
+/* ========================================
+   CONFIGURAÇÕES DA EMPRESA
+======================================== */
+
+function configurarEmpresa() {
+  const formEmpresa = document.getElementById("form-empresa");
+  const inputNome = document.getElementById("config-nome-empresa");
+
+  if (!formEmpresa || !inputNome) return;
+
+  async function carregarNomeEmpresa() {
+    try {
+      const res = await fetch(`https://tanocaixa-backend.onrender.com/api/empresa?empresa_id=${usuarioLogado.empresa_id}`);
+      if (res.ok) {
+        const dados = await res.json();
+        if (dados.nome_fantasia) inputNome.value = dados.nome_fantasia;
+      }
+    } catch (e) { console.error(e); }
+  }
+  carregarNomeEmpresa();
+
+  formEmpresa.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const novoNome = inputNome.value;
+    try {
+      const res = await fetch("https://tanocaixa-backend.onrender.com/api/empresa", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          empresa_id: usuarioLogado.empresa_id, 
+          criado_por: usuarioLogado.id,
+          nome_fantasia: novoNome 
+        })
+      });
+      if (res.ok) alert("Nome da empresa atualizado com sucesso!");
+    } catch (e) { alert("Erro ao salvar."); }
+  });
+}
+
+/* ========================================
+   BOTÃO PDF
+======================================== */
 
 function configurarBotaoPDF() {
   const btnPDF = document.getElementById("btn-baixar-pdf");
@@ -299,6 +329,7 @@ function renderizarAuditoria(logs) {
     if (l.acao === 'criou') acaoTexto = 'criou um registro';
     if (l.acao === 'apagou') acaoTexto = 'apagou um registro';
     if (l.acao === 'apagou/pagou') acaoTexto = 'pagou uma conta';
+    if (l.acao === 'editou') acaoTexto = 'editou um registro';
 
     let detalhesFormatados = "";
     if (l.detalhes) {
@@ -323,7 +354,7 @@ function renderizarAuditoria(logs) {
 }
 
 /* ========================================
-   MINHA EQUIPE (NOVO)
+   MINHA EQUIPE
 ======================================== */
 
 function configurarEquipe() {
@@ -385,7 +416,6 @@ function renderizarEquipe(membros, convites) {
   const listaAtiva = document.getElementById("lista-equipe-ativa");
   const listaPendente = document.getElementById("lista-equipe-pendente");
 
-  // Membros Ativos
   if (membros.length === 0) {
     listaAtiva.innerHTML = `<li class="historico-vazio">Nenhum membro ativo.</li>`;
   } else {
@@ -400,7 +430,6 @@ function renderizarEquipe(membros, convites) {
     `).join("");
   }
 
-  // Convites Pendentes
   if (convites.length === 0) {
     listaPendente.innerHTML = `<li class="historico-vazio">Nenhum convite pendente.</li>`;
   } else {
@@ -559,7 +588,7 @@ function verificarAvisos() {
 }
 
 /* ========================================
-   COMUNICAÇÃO COM A NUVEM
+   COMUNICAÇÃO COM A NUVEM (DADOS)
 ======================================== */
 
 async function buscarDadosNuvem() {
@@ -589,7 +618,7 @@ async function registrarTransacao(tipo, valor, descricao) {
 }
 
 /* ========================================
-   MODAIS
+   MODAIS DE ENTRADA, SAÍDA E CONTAS
 ======================================== */
 
 function configurarModais() {

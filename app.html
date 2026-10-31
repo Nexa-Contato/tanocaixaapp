@@ -1,0 +1,924 @@
+/* ========================================
+   TANOCAIXAAPP - FRONTEND CONECTADO
+======================================== */
+
+"use strict";
+
+let valoresVisiveis = false;
+let usuarioLogado = null;
+
+let transacoesNuvem = [];
+let contasNuvem = [];
+let fiscalNuvem = []; 
+
+let avisosAtivos = true;
+let somAtivo = true;
+let avisosDisparadosHoje = []; 
+let sonecas = {}; 
+
+const frasesMotivacionais = [
+  "Tudo pago por hoje! Você está no controle do seu negócio. Descanse, amanhã tem mais!",
+  "Dever cumprido! O seu caixa agradece a organização. Excelente trabalho.",
+  "Zero pendências hoje! Isso é gestão de verdade. Aproveite para respirar e curtir o seu negócio."
+];
+
+document.addEventListener("DOMContentLoaded", () => {
+  try {
+    if (localStorage.getItem("tc-som") === "false") somAtivo = false;
+    if (localStorage.getItem("tc-avisos") === "false") avisosAtivos = false;
+    const sonecasSalvas = localStorage.getItem("tc-sonecas");
+    if (sonecasSalvas) sonecas = JSON.parse(sonecasSalvas);
+  } catch (e) {}
+
+  const userJson = localStorage.getItem("tc-usuario-logado");
+  if (userJson) {
+    usuarioLogado = JSON.parse(userJson);
+    mostrarPainel(usuarioLogado);
+  }
+
+  const linkIrCadastro = document.getElementById("link-ir-cadastro");
+  const linkIrLogin = document.getElementById("link-ir-login");
+
+  if (linkIrCadastro) {
+    linkIrCadastro.addEventListener("click", (e) => {
+      e.preventDefault();
+      document.getElementById("tela-login").style.display = "none";
+      document.getElementById("tela-cadastro").style.display = "flex";
+    });
+  }
+
+  if (linkIrLogin) {
+    linkIrLogin.addEventListener("click", (e) => {
+      e.preventDefault();
+      document.getElementById("tela-cadastro").style.display = "none";
+      document.getElementById("tela-login").style.display = "flex";
+    });
+  }
+
+  const formCadastro = document.getElementById("form-cadastro");
+  if (formCadastro) {
+    formCadastro.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nome = document.getElementById("cad-nome").value;
+      const email = document.getElementById("cad-email").value;
+      const senha = document.getElementById("cad-senha").value;
+
+      try {
+        const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/auth/cadastro", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome, email, senha })
+        });
+        const dados = await resposta.json();
+        if (resposta.ok) {
+          alert("Conta criada com sucesso! Faça login para continuar.");
+          document.getElementById("tela-cadastro").style.display = "none";
+          document.getElementById("tela-login").style.display = "flex";
+          formCadastro.reset();
+        } else {
+          alert(dados.erro || "Erro ao criar conta.");
+        }
+      } catch (erro) { alert("Erro ao conectar com o servidor."); }
+    });
+  }
+
+  const formLogin = document.getElementById("form-login");
+  if (formLogin) {
+    formLogin.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("login-email").value;
+      const senha = document.getElementById("login-senha").value;
+
+      try {
+        const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, senha })
+        });
+        const dados = await resposta.json();
+        if (resposta.ok) {
+          usuarioLogado = dados.usuario;
+          localStorage.setItem("tc-usuario-logado", JSON.stringify(usuarioLogado));
+          mostrarPainel(usuarioLogado);
+        } else {
+          alert(dados.erro || "E-mail ou senha incorretos.");
+        }
+      } catch (erro) { alert("Erro ao conectar com o servidor."); }
+    });
+  }
+});
+
+function mostrarPainel(usuario) {
+  document.getElementById("tela-login").style.display = "none";
+  document.getElementById("tela-cadastro").style.display = "none";
+  document.getElementById("tela-principal").style.display = "block";
+  const nomeEl = document.getElementById("nome-usuario");
+  if (nomeEl) nomeEl.textContent = usuario.nome;
+
+  const btnEquipe = document.getElementById("abrir-equipe");
+  if (usuario.cargo === "gestor" && btnEquipe) btnEquipe.style.display = "grid";
+
+  const btnAuditoria = document.getElementById("abrir-auditoria");
+  if (usuario.cargo === "gestor" && btnAuditoria) btnAuditoria.style.display = "grid";
+  else if (btnAuditoria) btnAuditoria.style.display = "none"; 
+
+  configurarTema();
+  configurarPrivacidade();
+  configurarModais();
+  configurarConfiguracoes();
+  configurarLimparDados();
+  configurarBotaoPDF();
+  configurarAuditoria(); 
+  configurarEquipe(); 
+  configurarEmpresa(); // NOVO
+  
+  atualizarTela();
+  setInterval(verificarAvisos, 60000); 
+}
+
+function configurarTema() {
+  const botaoTema = document.getElementById("alternar-tema");
+  const iconeTema = document.getElementById("icone-tema");
+  if (!botaoTema || !iconeTema) return;
+
+  let temaSalvo = null;
+  try { temaSalvo = localStorage.getItem("tanocaixa-tema"); } catch (erro) {}
+  const temaInicial = temaSalvo === "dark" || temaSalvo === "light" ? temaSalvo : "light";
+  aplicarTema(temaInicial);
+
+  botaoTema.addEventListener("click", function () {
+    const proximoTema = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    aplicarTema(proximoTema);
+    try { localStorage.setItem("tanocaixa-tema", proximoTema); } catch (erro) {}
+  });
+
+  function aplicarTema(tema) {
+    document.documentElement.dataset.theme = tema;
+    const escuro = tema === "dark";
+    iconeTema.textContent = escuro ? "☀" : "☾";
+    botaoTema.setAttribute("aria-pressed", String(escuro));
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", escuro ? "#202522" : "#f2f4f0");
+  }
+}
+
+function configurarPrivacidade() {
+  const botao = document.getElementById("alternar-privacidade");
+  if (!botao) return;
+  try { if (localStorage.getItem("tanocaixa-privacidade") === "visivel") valoresVisiveis = true; } catch (erro) {}
+
+  botao.addEventListener("click", function () {
+    valoresVisiveis = !valoresVisiveis;
+    atualizarTela(); 
+    try { localStorage.setItem("tanocaixa-privacidade", valoresVisiveis ? "visivel" : "oculto"); } catch (erro) {}
+  });
+}
+
+function configurarLimparDados() {
+  const btnLimpar = document.getElementById("btn-limpar-dados");
+  if (!btnLimpar) return;
+  btnLimpar.addEventListener("click", function () {
+    if (confirm("Apagar todos os dados?")) {
+      if (confirm("Apagar tudo?")) { localStorage.clear(); location.reload(); }
+    }
+  });
+}
+
+/* ========================================
+   CONFIGURAÇÕES (MODAL)
+======================================== */
+
+function configurarConfiguracoes() {
+  const modalConfig = document.getElementById("modal-config");
+  const btnAbrirConfig = document.getElementById("abrir-configuracoes");
+  const btnFecharConfig = document.getElementById("fechar-modal-config");
+  const checkSom = document.getElementById("check-som");
+  const checkAvisos = document.getElementById("check-avisos");
+
+  if (!modalConfig || !btnAbrirConfig) return;
+
+  checkSom.checked = somAtivo;
+  checkAvisos.checked = avisosAtivos;
+
+  btnAbrirConfig.addEventListener("click", () => {
+    modalConfig.classList.add("ativo");
+    modalConfig.setAttribute("aria-hidden", "false");
+  });
+
+  btnFecharConfig.addEventListener("click", () => {
+    modalConfig.classList.remove("ativo");
+    modalConfig.setAttribute("aria-hidden", "true");
+    
+    somAtivo = checkSom.checked;
+    avisosAtivos = checkAvisos.checked;
+    try {
+      localStorage.setItem("tc-som", somAtivo);
+      localStorage.setItem("tc-avisos", avisosAtivos);
+    } catch (e) {}
+    
+    if (somAtivo) tocarSom("sucesso");
+  });
+}
+
+/* ========================================
+   CONFIGURAÇÕES DA EMPRESA
+======================================== */
+
+function configurarEmpresa() {
+  const formEmpresa = document.getElementById("form-empresa");
+  const inputNome = document.getElementById("config-nome-empresa");
+
+  if (!formEmpresa || !inputNome) return;
+
+  async function carregarNomeEmpresa() {
+    try {
+      const res = await fetch(`https://tanocaixa-backend.onrender.com/api/empresa?empresa_id=${usuarioLogado.empresa_id}`);
+      if (res.ok) {
+        const dados = await res.json();
+        if (dados.nome_fantasia) inputNome.value = dados.nome_fantasia;
+      }
+    } catch (e) { console.error(e); }
+  }
+  carregarNomeEmpresa();
+
+  formEmpresa.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const novoNome = inputNome.value;
+    try {
+      const res = await fetch("https://tanocaixa-backend.onrender.com/api/empresa", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          empresa_id: usuarioLogado.empresa_id, 
+          criado_por: usuarioLogado.id,
+          nome_fantasia: novoNome 
+        })
+      });
+      if (res.ok) alert("Nome da empresa atualizado com sucesso!");
+    } catch (e) { alert("Erro ao salvar."); }
+  });
+}
+
+/* ========================================
+   BOTÃO PDF
+======================================== */
+
+function configurarBotaoPDF() {
+  const btnPDF = document.getElementById("btn-baixar-pdf");
+  if (!btnPDF) return;
+
+  btnPDF.addEventListener("click", () => {
+    if (!usuarioLogado) return;
+    const dataAtual = new Date();
+    const mesAtual = dataAtual.toISOString().substring(0, 7); 
+    window.open(`https://tanocaixa-backend.onrender.com/api/relatorio?empresa_id=${usuarioLogado.empresa_id}&mes=${mesAtual}`, '_blank');
+  });
+}
+
+/* ========================================
+   TRILHA DE AUDITORIA
+======================================== */
+
+function configurarAuditoria() {
+  const btnAbrir = document.getElementById("abrir-auditoria");
+  const btnFechar = document.getElementById("fechar-auditoria");
+  const secao = document.getElementById("secao-auditoria");
+
+  if (!btnAbrir || !secao) return;
+
+  btnAbrir.addEventListener("click", () => {
+    secao.style.display = "block";
+    buscarLogsAuditoria();
+    secao.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  btnFechar.addEventListener("click", () => {
+    secao.style.display = "none";
+  });
+}
+
+async function buscarLogsAuditoria() {
+  const lista = document.getElementById("lista-auditoria");
+  if (!lista) return;
+  
+  lista.innerHTML = `<li class="historico-vazio">Carregando trilha de auditoria...</li>`;
+
+  try {
+    const resposta = await fetch(`https://tanocaixa-backend.onrender.com/api/auditoria?empresa_id=${usuarioLogado.empresa_id}`);
+    if (resposta.ok) {
+      const logs = await resposta.json();
+      renderizarAuditoria(logs);
+    }
+  } catch (erro) {
+    lista.innerHTML = `<li class="historico-vazio">Erro ao carregar a auditoria.</li>`;
+  }
+}
+
+function renderizarAuditoria(logs) {
+  const lista = document.getElementById("lista-auditoria");
+  if (logs.length === 0) {
+    lista.innerHTML = `<li class="historico-vazio">Nenhum registro de ação encontrado.</li>`;
+    return;
+  }
+
+  lista.innerHTML = logs.map(l => {
+    const dataObj = new Date(l.data_hora);
+    const dataFormatada = dataObj.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const nomeUsuario = l.usuario_nome || "Usuário Desconhecido";
+    
+    let acaoTexto = l.acao;
+    if (l.acao === 'criou') acaoTexto = 'criou um registro';
+    if (l.acao === 'apagou') acaoTexto = 'apagou um registro';
+    if (l.acao === 'apagou/pagou') acaoTexto = 'pagou uma conta';
+    if (l.acao === 'editou') acaoTexto = 'editou um registro';
+
+    let detalhesFormatados = "";
+    if (l.detalhes) {
+      let obj = typeof l.detalhes === 'string' ? JSON.parse(l.detalhes) : l.detalhes;
+      const valores = Object.values(obj);
+      if (valores.length > 0) detalhesFormatados = valores.join(" - ");
+    }
+
+    return `
+      <li class="item-historico" style="flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px;">
+        <div style="width: 100%; display: flex; justify-content: space-between; font-weight: 600; color: var(--cor-primaria);">
+          <span>${nomeUsuario}</span>
+          <span style="font-size: 0.75rem; color: var(--cor-secundaria); font-weight: normal;">${dataFormatada}</span>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--cor-texto);">
+          ${acaoTexto} na tabela <strong>${l.tabela_afetada}</strong>
+        </div>
+        ${detalhesFormatados ? `<div style="font-size: 0.8rem; color: var(--cor-secundaria); background: var(--cor-fundo); padding: 6px 10px; border-radius: 6px; width: 100%; border: 1px solid var(--cor-borda);">${detalhesFormatados}</div>` : ''}
+      </li>
+    `;
+  }).join("");
+}
+
+/* ========================================
+   MINHA EQUIPE
+======================================== */
+
+function configurarEquipe() {
+  const btnAbrir = document.getElementById("abrir-equipe");
+  const btnFechar = document.getElementById("fechar-equipe");
+  const secao = document.getElementById("secao-equipe");
+  const formConvite = document.getElementById("form-convite");
+
+  if (!btnAbrir || !secao) return;
+
+  btnAbrir.addEventListener("click", () => {
+    secao.style.display = "block";
+    buscarEquipe();
+    secao.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  btnFechar.addEventListener("click", () => {
+    secao.style.display = "none";
+  });
+
+  formConvite.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email-convite").value;
+
+    try {
+      const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/equipe/convidar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          empresa_id: usuarioLogado.empresa_id, 
+          criado_por: usuarioLogado.id, 
+          email_convidado: email 
+        })
+      });
+      const dados = await resposta.json();
+      
+      if (resposta.ok) {
+        alert("Convite gerado! Peça para a pessoa criar uma conta com este e-mail.");
+        document.getElementById("email-convite").value = "";
+        buscarEquipe();
+      } else {
+        alert(dados.erro || "Erro ao convidar.");
+      }
+    } catch (erro) { alert("Erro de conexão."); }
+  });
+}
+
+async function buscarEquipe() {
+  try {
+    const resposta = await fetch(`https://tanocaixa-backend.onrender.com/api/equipe?empresa_id=${usuarioLogado.empresa_id}`);
+    if (resposta.ok) {
+      const dados = await resposta.json();
+      renderizarEquipe(dados.membros, dados.convites);
+    }
+  } catch (erro) { console.error(erro); }
+}
+
+function renderizarEquipe(membros, convites) {
+  const listaAtiva = document.getElementById("lista-equipe-ativa");
+  const listaPendente = document.getElementById("lista-equipe-pendente");
+
+  if (membros.length === 0) {
+    listaAtiva.innerHTML = `<li class="historico-vazio">Nenhum membro ativo.</li>`;
+  } else {
+    listaAtiva.innerHTML = membros.map(m => `
+      <li class="item-historico" style="padding: 12px; justify-content: flex-start; gap: 12px;">
+        <div class="item-historico-icone entrada" style="background: var(--cor-lilas-claro); color: var(--cor-icone-lilas);">${m.nome.charAt(0).toUpperCase()}</div>
+        <div class="item-historico-texto">
+          <span class="item-historico-desc">${m.nome} ${m.id === usuarioLogado.id ? '(Você)' : ''}</span>
+          <span class="item-historico-data">${m.email} · ${m.cargo.toUpperCase()}</span>
+        </div>
+      </li>
+    `).join("");
+  }
+
+  if (convites.length === 0) {
+    listaPendente.innerHTML = `<li class="historico-vazio">Nenhum convite pendente.</li>`;
+  } else {
+    listaPendente.innerHTML = convites.map(c => `
+      <li class="item-historico" style="padding: 12px; justify-content: flex-start; gap: 12px; border-left: 4px solid var(--cor-icone-amarelo);">
+        <div class="item-historico-icone saida" style="background: var(--cor-amarelo-claro); color: var(--cor-icone-amarelo);">?</div>
+        <div class="item-historico-texto">
+          <span class="item-historico-desc">${c.email_convidado}</span>
+          <span class="item-historico-data">Aguardando cadastro</span>
+        </div>
+      </li>
+    `).join("");
+  }
+}
+
+/* ========================================
+   SONS E AVISOS (TOASTS)
+======================================== */
+
+function tocarSom(tipo) {
+  if (!somAtivo) return;
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    if (tipo === "alerta") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.setValueAtTime(554.37, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    } else {
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    }
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
+  } catch (e) {}
+}
+
+function mostrarToast(titulo, mensagem, tipo, idConta, ehFiscal = false) {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast ${tipo}`;
+  
+  toast.innerHTML = `
+    <div>
+      <p>${titulo}</p>
+      <small>${mensagem}</small>
+    </div>
+    <div class="toast-acoes">
+      <button type="button" class="btn-soneca">Mais tarde</button>
+      <button type="button" class="btn-fechar">Fechar</button>
+    </div>
+  `;
+  
+  const btnSoneca = toast.querySelector(".btn-soneca");
+  btnSoneca.addEventListener("click", () => {
+    toast.remove();
+    const chave = (ehFiscal ? "f" : "c") + idConta;
+    sonecas[chave] = Date.now();
+    try { localStorage.setItem("tc-sonecas", JSON.stringify(sonecas)); } catch(e){}
+  });
+
+  const btnFechar = toast.querySelector(".btn-fechar");
+  btnFechar.addEventListener("click", () => toast.remove());
+
+  container.appendChild(toast);
+  tocarSom(tipo === "alerta" ? "alerta" : "sucesso");
+
+  setTimeout(() => {
+    if (toast.parentElement) toast.remove();
+  }, 15000);
+}
+
+/* ========================================
+   LÓGICA DE VERIFICAÇÃO DE AVISOS
+======================================== */
+
+function verificarAvisos() {
+  if (!avisosAtivos) return;
+
+  const agora = new Date();
+  const hojeString = agora.toISOString().split('T')[0];
+  const horaAtual = agora.getHours();
+  const amanha = new Date(agora);
+  amanha.setDate(amanha.getDate() + 1);
+  const amanhaString = amanha.toISOString().split('T')[0];
+
+  let contasPendentesHoje = 0;
+
+  const sonecaExpirada = (chave) => {
+    if (!sonecas[chave]) return true;
+    return (Date.now() - sonecas[chave]) > 7200000;
+  };
+
+  contasNuvem.forEach(c => {
+    if (!c.data_vencimento) return;
+    const vencimento = c.data_vencimento.split('T')[0];
+    const chaveAviso = "c" + c.id;
+
+    if (vencimento === hojeString) {
+      contasPendentesHoje++;
+      if (!avisosDisparadosHoje.includes(chaveAviso) && horaAtual < 20 && sonecaExpirada(chaveAviso)) {
+        mostrarToast("Vence hoje!", `A conta "${c.descricao}" vence hoje.`, "alerta", c.id, false);
+        avisosDisparadosHoje.push(chaveAviso);
+      }
+      else if (horaAtual >= 20 && !avisosDisparadosHoje.includes(chaveAviso + "_20h") && sonecaExpirada(chaveAviso + "_20h")) {
+        mostrarToast("Último aviso do dia!", `A conta "${c.descricao}" venceu hoje e ainda não foi paga.`, "alerta", c.id, false);
+        avisosDisparadosHoje.push(chaveAviso + "_20h");
+      }
+    } 
+    else if (vencimento === amanhaString && horaAtual >= 14) {
+      if (!avisosDisparadosHoje.includes(chaveAviso + "_vespera") && sonecaExpirada(chaveAviso + "_vespera")) {
+        mostrarToast("Vence amanhã", `Prepare o caixa: "${c.descricao}" vence amanhã.`, "alerta", c.id, false);
+        avisosDisparadosHoje.push(chaveAviso + "_vespera");
+      }
+    }
+  });
+
+  fiscalNuvem.forEach(f => {
+    if (f.concluida || !f.data_vencimento) return;
+    const vencimento = f.data_vencimento.split('T')[0];
+    const chaveAviso = "f" + f.id;
+
+    if (vencimento === hojeString) {
+       if (!avisosDisparadosHoje.includes(chaveAviso) && sonecaExpirada(chaveAviso)) {
+        mostrarToast("Tarefa Fiscal Hoje", `Não esqueça: "${f.descricao}".`, "alerta", f.id, true);
+        avisosDisparadosHoje.push(chaveAviso);
+      }
+    }
+  });
+
+  const banner = document.getElementById("banner-motivacional");
+  if (banner) {
+    if (contasPendentesHoje === 0 && contasNuvem.length > 0) {
+      banner.style.display = "block";
+      if (!banner.dataset.ativo) {
+        const fraseSorteada = frasesMotivacionais[Math.floor(Math.random() * frasesMotivacionais.length)];
+        document.getElementById("texto-motivacional").textContent = fraseSorteada;
+        banner.dataset.ativo = "true";
+      }
+    } else {
+      banner.style.display = "none";
+      banner.dataset.ativo = "";
+    }
+  }
+}
+
+/* ========================================
+   COMUNICAÇÃO COM A NUVEM (DADOS)
+======================================== */
+
+async function buscarDadosNuvem() {
+  if (!usuarioLogado) return;
+  try {
+    const resT = await fetch(`https://tanocaixa-backend.onrender.com/api/transacoes?empresa_id=${usuarioLogado.empresa_id}`);
+    if (resT.ok) transacoesNuvem = await resT.json();
+    const resC = await fetch(`https://tanocaixa-backend.onrender.com/api/contas?empresa_id=${usuarioLogado.empresa_id}`);
+    if (resC.ok) contasNuvem = await resC.json();
+    const resF = await fetch(`https://tanocaixa-backend.onrender.com/api/fiscal?empresa_id=${usuarioLogado.empresa_id}`);
+    if (resF.ok) fiscalNuvem = await resF.json();
+  } catch (erro) { console.error(erro); }
+}
+
+async function registrarTransacao(tipo, valor, descricao) {
+  if (!usuarioLogado) return;
+  try {
+    await fetch("https://tanocaixa-backend.onrender.com/api/transacoes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id, tipo, valor, descricao
+      })
+    });
+    await atualizarTela();
+  } catch (erro) { alert("Erro de conexão."); }
+}
+
+/* ========================================
+   MODAIS DE ENTRADA, SAÍDA E CONTAS
+======================================== */
+
+function configurarModais() {
+  const modalE = document.getElementById("modal-entrada");
+  const formE = document.getElementById("form-entrada");
+  if (modalE && formE) {
+    document.querySelector('[data-action="entrada"]').addEventListener("click", () => {
+      modalE.classList.add("ativo"); modalE.setAttribute("aria-hidden", "false");
+      document.getElementById("valor-entrada").focus();
+    });
+    const fecharE = () => { modalE.classList.remove("ativo"); modalE.setAttribute("aria-hidden", "true"); formE.reset(); };
+    document.getElementById("fechar-modal").addEventListener("click", fecharE);
+    formE.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const v = parseFloat(document.getElementById("valor-entrada").value);
+      const d = document.getElementById("descricao-entrada").value;
+      if (v > 0) { registrarTransacao("entrada", v, d); fecharE(); }
+    });
+  }
+
+  const modalS = document.getElementById("modal-saida");
+  const formS = document.getElementById("form-saida");
+  if (modalS && formS) {
+    document.querySelector('[data-action="saida"]').addEventListener("click", () => {
+      modalS.classList.add("ativo"); modalS.setAttribute("aria-hidden", "false");
+      document.getElementById("valor-saida").focus();
+    });
+    const fecharS = () => { modalS.classList.remove("ativo"); modalS.setAttribute("aria-hidden", "true"); formS.reset(); };
+    document.getElementById("fechar-modal-saida").addEventListener("click", fecharS);
+    formS.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const v = parseFloat(document.getElementById("valor-saida").value);
+      const d = document.getElementById("descricao-saida").value;
+      if (v > 0) { registrarTransacao("saida", v, d); fecharS(); }
+    });
+  }
+
+  const modalC = document.getElementById("modal-contas");
+  const formC = document.getElementById("form-contas");
+  if (modalC && formC) {
+    document.querySelector('[data-action="contas"]').addEventListener("click", () => {
+      modalC.classList.add("ativo"); modalC.setAttribute("aria-hidden", "false");
+      document.getElementById("descricao-conta").focus();
+    });
+    const fecharC = () => { modalC.classList.remove("ativo"); modalC.setAttribute("aria-hidden", "true"); formC.reset(); };
+    document.getElementById("fechar-modal-contas").addEventListener("click", fecharC);
+    formC.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const d = document.getElementById("descricao-conta").value;
+      const v = parseFloat(document.getElementById("valor-conta").value);
+      const data = document.getElementById("data-conta").value;
+      if (v > 0 && d && data) {
+        try {
+          const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/contas", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id, descricao: d, valor: v, data_vencimento: data })
+          });
+          if (resposta.ok) { await atualizarTela(); fecharC(); }
+        } catch (erro) { alert("Erro ao salvar conta."); }
+      }
+    });
+  }
+
+  const modalF = document.getElementById("modal-fiscal");
+  const formF = document.getElementById("form-fiscal");
+  if (modalF && formF) {
+    document.querySelector('[data-action="fiscal"]').addEventListener("click", () => {
+      modalF.classList.add("ativo"); modalF.setAttribute("aria-hidden", "false");
+      document.getElementById("descricao-fiscal").focus();
+    });
+    const fecharF = () => { modalF.classList.remove("ativo"); modalF.setAttribute("aria-hidden", "true"); formF.reset(); };
+    document.getElementById("fechar-modal-fiscal").addEventListener("click", fecharF);
+    formF.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const d = document.getElementById("descricao-fiscal").value;
+      const data = document.getElementById("data-fiscal").value;
+      if (d) {
+        try {
+          const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/fiscal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id, descricao: d, data_vencimento: data || null })
+          });
+          if (resposta.ok) { await atualizarTela(); fecharF(); }
+        } catch (erro) { alert("Erro ao salvar tarefa."); }
+      }
+    });
+  }
+}
+
+/* ========================================
+   ATUALIZAR TELA E RENDERIZAR
+======================================== */
+
+async function atualizarTela() {
+  await buscarDadosNuvem();
+
+  let saldo = 0, entradas = 0, saidas = 0;
+  transacoesNuvem.forEach(t => {
+    if (t.tipo === "entrada") { saldo += parseFloat(t.valor); entradas += parseFloat(t.valor); }
+    else { saldo -= parseFloat(t.valor); saidas += parseFloat(t.valor); }
+  });
+
+  const formatar = (num) => num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const valoresFormatados = [formatar(saldo), formatar(entradas), formatar(saidas)];
+
+  const campos = document.querySelectorAll("[data-private-value]");
+  const campoSaldoPrincipal = document.getElementById("saldo-principal");
+  const botaoPrivacidade = document.getElementById("alternar-privacidade");
+  const iconePrivacidade = document.getElementById("icone-privacidade");
+
+  campos.forEach((campo, index) => {
+    if (valoresFormatados[index]) campo.textContent = valoresVisiveis ? valoresFormatados[index] : "••••••••";
+  });
+
+  if (campoSaldoPrincipal) {
+    if (saldo < 0) campoSaldoPrincipal.classList.add("saldo-negativo");
+    else campoSaldoPrincipal.classList.remove("saldo-negativo");
+  }
+
+  if (botaoPrivacidade && iconePrivacidade) {
+    iconePrivacidade.textContent = valoresVisiveis ? "◎" : "◉";
+    botaoPrivacidade.setAttribute("aria-pressed", String(valoresVisiveis));
+  }
+
+  renderizarHistorico();
+  renderizarContas();
+  renderizarFiscal();
+  
+  verificarAvisos();
+}
+
+function renderizarHistorico() {
+  const lista = document.getElementById("lista-historico");
+  if (!lista) return;
+  if (transacoesNuvem.length === 0) {
+    lista.innerHTML = `<li class="historico-vazio">Nenhuma movimentação registrada.</li>`;
+    return;
+  }
+
+  const formatar = (num) => num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  lista.innerHTML = transacoesNuvem.map(t => {
+    const dataObj = new Date(t.data_transacao);
+    const dataFormatada = dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    const isEntrada = t.tipo === "entrada";
+    const valorTexto = valoresVisiveis ? `${isEntrada ? "+" : "-"} ${formatar(parseFloat(t.valor))}` : "••••";
+
+    return `
+      <li class="item-historico">
+        <div class="item-historico-info">
+          <div class="item-historico-icone ${isEntrada ? 'entrada' : 'saida'}">${isEntrada ? '↑' : '↓'}</div>
+          <div class="item-historico-texto">
+            <span class="item-historico-desc">${t.descricao}</span>
+            <span class="item-historico-data">${dataFormatada}</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="item-historico-valor ${isEntrada ? 'valor-entrada' : 'valor-saida'}">${valorTexto}</span>
+          <button class="botao-excluir-item" onclick="excluirTransacao('${t.id}')" title="Apagar lançamento">🗑️</button>
+        </div>
+      </li>
+    `;
+  }).join("");
+}
+
+function renderizarContas() {
+  const lista = document.getElementById("lista-contas");
+  if (!lista) return;
+  if (contasNuvem.length === 0) {
+    lista.innerHTML = `<li class="historico-vazio">Nenhuma conta pendente.</li>`;
+    return;
+  }
+
+  const formatar = (num) => num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  lista.innerHTML = contasNuvem.map(c => {
+    const dataObj = new Date(c.data_vencimento);
+    dataObj.setMinutes(dataObj.getMinutes() + dataObj.getTimezoneOffset());
+    const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+    const valorTexto = valoresVisiveis ? formatar(parseFloat(c.valor)) : "••••";
+
+    return `
+      <li class="item-conta">
+        <div class="item-conta-info">
+          <span class="item-conta-desc">${c.descricao}</span>
+          <span class="item-conta-data">Vence em: ${dataFormatada}</span>
+        </div>
+        <div class="item-conta-detalhes">
+          <span class="item-conta-valor">${valorTexto}</span>
+          <button class="botao-pagar-conta" onclick="pagarConta('${c.id}', '${c.descricao}', ${c.valor})">Pagar</button>
+          <button class="botao-excluir-conta" onclick="excluirConta('${c.id}')" title="Apagar conta">🗑️</button>
+        </div>
+      </li>
+    `;
+  }).join("");
+}
+
+function renderizarFiscal() {
+  const lista = document.getElementById("lista-fiscal");
+  if (!lista) return;
+  if (fiscalNuvem.length === 0) {
+    lista.innerHTML = `<li class="historico-vazio">Nenhuma tarefa fiscal pendente.</li>`;
+    return;
+  }
+
+  lista.innerHTML = fiscalNuvem.map(t => {
+    const dataFormatada = t.data_vencimento ? new Date(t.data_vencimento).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : "Sem data";
+    const classeConcluida = t.concluida ? "concluida" : "";
+
+    return `
+      <li class="item-fiscal">
+        <div class="item-fiscal-info">
+          <input type="checkbox" ${t.concluida ? "checked" : ""} onchange="alternarTarefaFiscal('${t.id}', ${t.concluida})">
+          <div class="item-historico-texto">
+            <span class="item-fiscal-desc ${classeConcluida}">${t.descricao}</span>
+            <span class="item-historico-data">Vencimento: ${dataFormatada}</span>
+          </div>
+        </div>
+        <button class="botao-excluir-fiscal" onclick="excluirTarefaFiscal('${t.id}')" title="Excluir">×</button>
+      </li>
+    `;
+  }).join("");
+}
+
+/* ========================================
+   AÇÕES (LIXEIRAS CONECTADAS À NUVEM)
+======================================== */
+
+window.excluirTransacao = async function(id) {
+  const t = transacoesNuvem.find(x => x.id === id);
+  if (!t) return;
+  const formatar = (num) => num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  if (confirm(`Deseja apagar o lançamento "${t.descricao}" no valor de ${formatar(parseFloat(t.valor))}?`)) {
+    if (confirm("Apagar definitivamente?")) {
+      try {
+        await fetch(`https://tanocaixa-backend.onrender.com/api/transacoes/${id}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
+        });
+        await atualizarTela();
+      } catch (erro) { alert("Erro ao apagar no banco."); }
+    }
+  }
+};
+
+window.pagarConta = async function(id, descricao, valor) {
+  if (confirm(`Confirmar pagamento de "${descricao}" no valor de R$ ${parseFloat(valor).toFixed(2)}?`)) {
+    try {
+      await registrarTransacao("saida", parseFloat(valor), `Pgto: ${descricao}`);
+      await fetch(`https://tanocaixa-backend.onrender.com/api/contas/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
+      });
+      await atualizarTela();
+    } catch (erro) { alert("Erro ao pagar conta."); }
+  }
+};
+
+window.excluirConta = async function(id) {
+  if (confirm("Deseja apagar esta conta? (Isso não gera saída no caixa)")) {
+    if (confirm("Apagar definitivamente?")) {
+      try {
+        await fetch(`https://tanocaixa-backend.onrender.com/api/contas/${id}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
+        });
+        await atualizarTela();
+      } catch (erro) { alert("Erro ao apagar conta."); }
+    }
+  }
+};
+
+window.alternarTarefaFiscal = async function(id, statusAtual) {
+  try {
+    await fetch(`https://tanocaixa-backend.onrender.com/api/fiscal/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ concluida: !statusAtual })
+    });
+    await atualizarTela();
+  } catch (erro) { alert("Erro ao atualizar tarefa."); }
+};
+
+window.excluirTarefaFiscal = async function(id) {
+  if (confirm("Deseja apagar esta tarefa fiscal?")) {
+    if (confirm("Apagar definitivamente?")) {
+      try {
+        await fetch(`https://tanocaixa-backend.onrender.com/api/fiscal/${id}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
+        });
+        await atualizarTela();
+      } catch (erro) { alert("Erro ao apagar tarefa."); }
+    }
+  }
+};

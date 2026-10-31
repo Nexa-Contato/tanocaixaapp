@@ -3,349 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Controle financeiro simples e discreto para MEIs e microempresas.">
-  <meta name="theme-color" content="#f2f4f0">
-  <title>TanoCaixaApp</title>
-  
-  <!-- FAVICON (Ícone da aba do navegador) -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='15' y='30' width='70' height='55' rx='12' fill='%23294b3b' /><rect x='10' y='20' width='80' height='20' rx='8' fill='%23d68c75' /><rect x='45' y='25' width='10' height='10' rx='2' fill='%23ffffff' /><path d='M35 55 H65 M50 55 V 75' stroke='%23ffffff' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <title>TanoCaixaApp - Gestão simples para o seu negócio</title>
+  <style>
+    :root {
+      --cor-fundo: #f2f4f0;
+      --cor-cartao: #ffffff;
+      --cor-primaria: #294b3b;
+      --cor-texto: #35443a;
+      --cor-secundaria: #788078;
+      --cor-verde-claro: #e2eee3;
+      --cor-terracota: #d68c75;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--cor-fundo);
+      color: var(--cor-texto);
+      line-height: 1.6;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+    
+    /* Topo */
+    header { padding: 20px 0; display: flex; justify-content: space-between; align-items: center; }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 1.5rem; font-weight: bold; color: var(--cor-primaria); }
+    .logo svg { width: 40px; height: 40px; }
+    .btn-login { padding: 10px 20px; border: 1px solid var(--cor-primaria); color: var(--cor-primaria); text-decoration: none; border-radius: 8px; font-weight: 600; transition: 0.2s; }
+    .btn-login:hover { background: var(--cor-verde-claro); }
+    
+    /* Hero */
+    .hero { text-align: center; padding: 80px 0; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); color: var(--cor-primaria); margin-bottom: 20px; line-height: 1.2; }
+    .hero p { font-size: 1.2rem; color: var(--cor-secundaria); max-width: 650px; margin: 0 auto 30px; }
+    .hero p strong { color: var(--cor-primaria); }
+    
+    .btn-cta { 
+      display: inline-block; background: var(--cor-primaria); color: white; padding: 15px 40px; 
+      font-size: 1.1rem; font-weight: bold; text-decoration: none; border-radius: 12px; transition: 0.2s;
+    }
+    .btn-cta:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(41,75,59,0.2); }
+    .aviso { display: block; margin-top: 15px; font-size: 0.9rem; color: var(--cor-secundaria); }
 
-  <link rel="stylesheet" href="css/style.css">
-  <script src="js/app.js" defer></script>
+    /* Benefícios */
+    .beneficios { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; padding: 60px 0; }
+    .card {
+      background: var(--cor-cartao); padding: 30px; border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e5e9e2;
+    }
+    .card .icone { font-size: 2rem; margin-bottom: 15px; display: block; }
+    .card h3 { color: var(--cor-primaria); margin-bottom: 10px; }
+    
+    /* Rodapé */
+    footer { text-align: center; padding: 40px 0; color: var(--cor-secundaria); font-size: 0.9rem; border-top: 1px solid #e5e9e2; margin-top: 40px; }
+  </style>
 </head>
 <body>
-  <main class="container">
-    <!-- TELA DE LOGIN -->
-    <div id="tela-login" class="tela-login">
-      <div class="login-caixa">
-        <div class="logo-login">
-          <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 10px;">
-            <rect x="15" y="30" width="70" height="55" rx="12" fill="var(--cor-verde-claro)" />
-            <rect x="10" y="20" width="80" height="20" rx="8" fill="var(--cor-icone-terracota)" />
-            <rect x="45" y="25" width="10" height="10" rx="2" fill="var(--cor-cartao)" />
-            <path d="M35 55 H65 M50 55 V 75" stroke="var(--cor-primaria)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <h1>TanoCaixa</h1>
-          <span>App</span>
-        </div>
-        <p class="login-subtitulo">Gestão simples para o seu negócio.</p>
-        <form id="form-login">
-          <div class="campo-grupo">
-            <label for="login-email">E-mail</label>
-            <input type="email" id="login-email" placeholder="seu@email.com" required>
-          </div>
-          <div class="campo-grupo">
-            <label for="login-senha">Senha</label>
-            <input type="password" id="login-senha" placeholder="Sua senha" required>
-          </div>
-          <button type="submit" class="botao-salvar botao-bloco">Entrar</button>
-        </form>
-        <p class="login-alternar">
-          Não tem conta? <a href="#" id="link-ir-cadastro">Crie uma agora</a>
-        </p>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="15" y="30" width="70" height="55" rx="12" fill="#e2eee3" />
+          <rect x="10" y="20" width="80" height="20" rx="8" fill="#d68c75" />
+          <rect x="45" y="25" width="10" height="10" rx="2" fill="#ffffff" />
+          <path d="M35 55 H65 M50 55 V 75" stroke="#294b3b" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        TanoCaixa
       </div>
-    </div>
+      <a href="app.html" class="btn-login">Acessar App</a>
+    </header>
 
-    <!-- TELA DE CADASTRO -->
-    <div id="tela-cadastro" class="tela-login" style="display: none;">
-      <div class="login-caixa">
-        <div class="logo-login">
-          <svg width="80" height="80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 10px;">
-            <rect x="15" y="30" width="70" height="55" rx="12" fill="var(--cor-verde-claro)" />
-            <rect x="10" y="20" width="80" height="20" rx="8" fill="var(--cor-icone-terracota)" />
-            <rect x="45" y="25" width="10" height="10" rx="2" fill="var(--cor-cartao)" />
-            <path d="M35 55 H65 M50 55 V 75" stroke="var(--cor-primaria)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <h1>TanoCaixa</h1>
-          <span>App</span>
-        </div>
-        <p class="login-subtitulo">Crie sua conta e ganhe 30 dias grátis.</p>
-        <form id="form-cadastro">
-          <div class="campo-grupo">
-            <label for="cad-nome">Seu Nome</label>
-            <input type="text" id="cad-nome" placeholder="Como quer ser chamado?" required>
-          </div>
-          <div class="campo-grupo">
-            <label for="cad-email">E-mail</label>
-            <input type="email" id="cad-email" placeholder="seu@email.com" required>
-          </div>
-          <div class="campo-grupo">
-            <label for="cad-senha">Senha</label>
-            <input type="password" id="cad-senha" placeholder="Crie uma senha" required>
-          </div>
-          <button type="submit" class="botao-salvar botao-bloco">Criar Conta</button>
-        </form>
-        <p class="login-alternar">
-          Já tem conta? <a href="#" id="link-ir-login">Faça login</a>
-        </p>
+    <section class="hero">
+      <h1>Gerir um negócio é mais leve com um parceiro de confiança.</h1>
+      <p>Deixe o seu caixa com a gente: um velho amigo, mas com a precisão de um <strong>auxiliar competente</strong>.</p>
+      <a href="app.html" class="btn-cta">Quero esse parceiro no meu negócio</a>
+      <span class="aviso">Teste grátis por 30 dias. Sem cartão de crédito.</span>
+    </section>
+
+    <section class="beneficios">
+      <div class="card">
+        <span class="icone">💰</span>
+        <h3>Fluxo de Caixa Descomplicado</h3>
+        <p>Registre entradas e saídas em segundos. Esqueça as planilhas complexas e saiba quanto sobrou no final do mês.</p>
       </div>
-    </div>
-
-    <!-- TELA PRINCIPAL -->
-    <div id="tela-principal" style="display: none;">
-      
-      <div id="banner-motivacional" class="banner-motivacional" style="display: none;">
-        <p id="texto-motivacional">Tudo pago por hoje!</p>
+      <div class="card">
+        <span class="icone">⏰</span>
+        <h3>Avisos que Salvam</h3>
+        <p>Nunca mais pague multa por esquecimento. O TanoCaixa te avisa na véspera, no dia e às 20h.</p>
       </div>
-
-      <header class="cabecalho">
-        <div>
-          <p class="texto-suave">SEU NEGÓCIO</p>
-          <h1>Olá, <span id="nome-usuario">empreendedor</span>.</h1>
-          <p class="subtitulo">Vamos cuidar das suas finanças?</p>
-        </div>
-        <div class="controles-cabecalho">
-          
-          <button class="botao-tema" id="abrir-equipe" type="button" aria-label="Minha Equipe" title="Minha Equipe" style="display: none;">
-            <span aria-hidden="true">👥</span>
-          </button>
-
-          <button class="botao-tema" id="abrir-auditoria" type="button" aria-label="Auditoria" title="Trilha de Auditoria">
-            <span aria-hidden="true">🛡️</span>
-          </button>
-
-          <!-- NOVO BOTÃO DE AJUDA -->
-          <button class="botao-tema" onclick="window.location.href='manual.html'" type="button" aria-label="Ajuda" title="Manual de Ajuda">
-            <span aria-hidden="true">❓</span>
-          </button>
-
-          <button class="botao-tema" id="abrir-configuracoes" type="button" aria-label="Configurações" title="Configurações">
-            <span aria-hidden="true">⚙️</span>
-          </button>
-          
-          <button class="botao-tema" id="alternar-tema" type="button" aria-label="Ativar tema escuro" aria-pressed="false" title="Alternar tema claro e escuro">
-            <span id="icone-tema" aria-hidden="true">☾</span>
-          </button>
-          
-          <div class="marca" aria-hidden="true" style="background: transparent;">
-            <svg width="46" height="46" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="15" y="30" width="70" height="55" rx="12" fill="var(--cor-verde-claro)" />
-              <rect x="10" y="20" width="80" height="20" rx="8" fill="var(--cor-icone-terracota)" />
-              <rect x="45" y="25" width="10" height="10" rx="2" fill="var(--cor-cartao)" />
-              <path d="M35 55 H65 M50 55 V 75" stroke="var(--cor-primaria)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-        </div>
-      </header>
-
-      <section class="cartao-saldo" aria-labelledby="titulo-saldo">
-        <div class="linha-saldo">
-          <div>
-            <p class="rotulo-saldo" id="titulo-saldo">Dinheiro disponível</p>
-            <p class="valor-financeiro" id="saldo-principal" data-private-value aria-label="Valor oculto">••••••••</p>
-          </div>
-          <button class="botao-privacidade" id="alternar-privacidade" type="button" aria-label="Revelar valores financeiros" aria-pressed="false" title="Mostrar ou ocultar valores">
-            <span id="icone-privacidade" aria-hidden="true">◉</span>
-          </button>
-        </div>
-        <p class="texto-saldo">Resumo financeiro do seu negócio</p>
-        <div class="resumo-mensal">
-          <div>
-            <p class="rotulo-resumo">Entradas do mês</p>
-            <p class="valor-resumo" data-private-value>••••••••</p>
-          </div>
-          <div>
-            <p class="rotulo-resumo">Saídas do mês</p>
-            <p class="valor-resumo" data-private-value>••••••••</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="secao-acoes" aria-labelledby="titulo-acoes">
-        <div class="titulo-secao">
-          <h2 id="titulo-acoes">O que você precisa fazer?</h2>
-          <p>Escolha uma ação para continuar.</p>
-        </div>
-        <div class="grade-acoes">
-          <button class="acao" type="button" data-action="entrada">
-            <span class="icone-acao icone-verde" aria-hidden="true">+</span>
-            <span class="texto-acao">Recebi dinheiro</span>
-            <span class="descricao-acao">Vendas e recebimentos</span>
-          </button>
-          <button class="acao" type="button" data-action="saida">
-            <span class="icone-acao icone-terracota" aria-hidden="true">−</span>
-            <span class="texto-acao">Paguei algo</span>
-            <span class="descricao-acao">Despesas e pagamentos</span>
-          </button>
-          <button class="acao" type="button" data-action="contas">
-            <span class="icone-acao icone-lilas" aria-hidden="true">◷</span>
-            <span class="texto-acao">Minhas contas</span>
-            <span class="descricao-acao">Vencimentos e pendências</span>
-          </button>
-          <button class="acao" type="button" data-action="fiscal">
-            <span class="icone-acao icone-amarelo" aria-hidden="true">✓</span>
-            <span class="texto-acao">Área fiscal</span>
-            <span class="descricao-acao">Notas fiscais e DAS</span>
-          </button>
-        </div>
-      </section>
-
-      <section class="secao-historico" aria-labelledby="titulo-historico">
-        <div class="titulo-secao" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-          <h2 id="titulo-historico" style="margin: 0;">Últimas movimentações</h2>
-          <button id="btn-baixar-pdf" class="botao-salvar" style="padding: 6px 12px; font-size: 0.8rem;">Baixar PDF</button>
-        </div>
-        <ul class="lista-historico" id="lista-historico"></ul>
-      </section>
-
-      <section class="secao-contas" aria-labelledby="titulo-contas">
-        <div class="titulo-secao">
-          <h2 id="titulo-contas">Contas a pagar</h2>
-        </div>
-        <ul class="lista-contas" id="lista-contas"></ul>
-      </section>
-
-      <section class="secao-fiscal" aria-labelledby="titulo-fiscal">
-        <div class="titulo-secao">
-          <h2 id="titulo-fiscal">Checklist Fiscal</h2>
-        </div>
-        <ul class="lista-fiscal" id="lista-fiscal"></ul>
-      </section>
-
-      <!-- SEÇÃO DE AUDITORIA -->
-      <section class="secao-historico" id="secao-auditoria" style="display: none; margin-top: 32px;">
-        <div class="titulo-secao" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-          <h2 style="margin: 0;">Trilha de Auditoria</h2>
-          <button id="fechar-auditoria" class="botao-cancelar" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">Fechar</button>
-        </div>
-        <ul class="lista-historico" id="lista-auditoria" style="font-size: 0.85rem;"></ul>
-      </section>
-
-      <!-- SEÇÃO DE EQUIPE -->
-      <section class="secao-historico" id="secao-equipe" style="display: none; margin-top: 32px;">
-        <div class="titulo-secao" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-          <h2 style="margin: 0;">Minha Equipe</h2>
-          <button id="fechar-equipe" class="botao-cancelar" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">Fechar</button>
-        </div>
-        
-        <div style="background: var(--cor-cartao); padding: 16px; border-radius: 12px; border: 1px solid var(--cor-borda); margin-bottom: 16px;">
-          <h3 style="margin-top: 0; font-size: 1rem; color: var(--cor-primaria);">Convidar novo membro</h3>
-          <form id="form-convite" style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <input type="email" id="email-convite" placeholder="E-mail do ajudante" required style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--cor-borda); min-width: 200px;">
-            <button type="submit" class="botao-salvar" style="padding: 10px 18px;">Convidar</button>
-          </form>
-        </div>
-
-        <h3 style="font-size: 1rem; color: var(--cor-primaria); margin-top: 24px;">Membros ativos</h3>
-        <ul class="lista-historico" id="lista-equipe-ativa" style="font-size: 0.9rem; margin-bottom: 24px;"></ul>
-
-        <h3 style="font-size: 1rem; color: var(--cor-primaria);">Convites pendentes</h3>
-        <ul class="lista-historico" id="lista-equipe-pendente" style="font-size: 0.9rem;"></ul>
-      </section>
-
-      <footer class="rodape">
-        <p>TanoCaixaApp · Simples para o seu dia a dia.</p>
-        <button id="btn-limpar-dados" class="botao-limpar">Apagar todos os dados (Zerar App)</button>
-      </footer>
-    </div>
-
-    <div id="toast-container" class="toast-container"></div>
-
-    <!-- MODAIS -->
-    <div class="modal-fundo" id="modal-entrada" aria-hidden="true">
-      <div class="modal-caixa" role="dialog" aria-labelledby="titulo-modal">
-        <h2 id="titulo-modal">Registrar entrada</h2>
-        <form id="form-entrada">
-          <div class="campo-grupo">
-            <label for="valor-entrada">Valor (R$)</label>
-            <input type="number" id="valor-entrada" step="0.01" min="0.01" placeholder="0,00" required>
-          </div>
-          <div class="campo-grupo">
-            <label for="descricao-entrada">Descrição</label>
-            <input type="text" id="descricao-entrada" placeholder="Ex: Venda de produto" required>
-          </div>
-          <div class="botoes-modal">
-            <button type="button" class="botao-cancelar" id="fechar-modal">Cancelar</button>
-            <button type="submit" class="botao-salvar">Salvar</button>
-          </div>
-        </form>
+      <div class="card">
+        <span class="icone">👥</span>
+        <h3>Trabalho em Equipe</h3>
+        <p>Convide o seu ajudante. Ele lança as vendas, mas você controla a auditoria e as permissões.</p>
       </div>
-    </div>
-
-    <div class="modal-fundo" id="modal-saida" aria-hidden="true">
-      <div class="modal-caixa" role="dialog" aria-labelledby="titulo-modal-saida">
-        <h2 id="titulo-modal-saida">Registrar saída</h2>
-        <form id="form-saida">
-          <div class="campo-grupo">
-            <label for="valor-saida">Valor (R$)</label>
-            <input type="number" id="valor-saida" step="0.01" min="0.01" placeholder="0,00" required>
-          </div>
-          <div class="campo-grupo">
-            <label for="descricao-saida">Descrição</label>
-            <input type="text" id="descricao-saida" placeholder="Ex: Conta de luz" required>
-          </div>
-          <div class="botoes-modal">
-            <button type="button" class="botao-cancelar" id="fechar-modal-saida">Cancelar</button>
-            <button type="submit" class="botao-salvar">Salvar</button>
-          </div>
-        </form>
+      <div class="card">
+        <span class="icone">📄</span>
+        <h3>Relatório em PDF</h3>
+        <p>Baixe um extrato profissional do mês com um clique. Perfeito para enviar ao seu contador.</p>
       </div>
-    </div>
+    </section>
 
-    <div class="modal-fundo" id="modal-contas" aria-hidden="true">
-      <div class="modal-caixa" role="dialog" aria-labelledby="titulo-modal-contas">
-        <h2 id="titulo-modal-contas">Cadastrar conta a pagar</h2>
-        <form id="form-contas">
-          <div class="campo-grupo">
-            <label for="descricao-conta">Descrição</label>
-            <input type="text" id="descricao-conta" placeholder="Ex: Aluguel da loja" required>
-          </div>
-          <div class="campo-grupo">
-            <label for="valor-conta">Valor (R$)</label>
-            <input type="number" id="valor-conta" step="0.01" min="0.01" placeholder="0,00" required>
-          </div>
-          <div class="campo-grupo">
-            <label for="data-conta">Data de vencimento</label>
-            <input type="date" id="data-conta" required>
-          </div>
-          <div class="botoes-modal">
-            <button type="button" class="botao-cancelar" id="fechar-modal-contas">Cancelar</button>
-            <button type="submit" class="botao-salvar">Salvar conta</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div class="modal-fundo" id="modal-fiscal" aria-hidden="true">
-      <div class="modal-caixa" role="dialog" aria-labelledby="titulo-modal-fiscal">
-        <h2 id="titulo-modal-fiscal">Nova tarefa fiscal</h2>
-        <form id="form-fiscal">
-          <div class="campo-grupo">
-            <label for="descricao-fiscal">O que precisa ser feito?</label>
-            <input type="text" id="descricao-fiscal" placeholder="Ex: Pagar o DAS de Outubro">
-          </div>
-          <div class="campo-grupo">
-            <label for="data-fiscal">Data de Vencimento (opcional)</label>
-            <input type="date" id="data-fiscal">
-          </div>
-          <div class="botoes-modal">
-            <button type="button" class="botao-cancelar" id="fechar-modal-fiscal">Cancelar</button>
-            <button type="submit" class="botao-salvar">Adicionar</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div class="modal-fundo" id="modal-config" aria-hidden="true">
-      <div class="modal-caixa" role="dialog" aria-labelledby="titulo-modal-config">
-        <h2 id="titulo-modal-config">Configurações de Avisos</h2>
-        <p style="font-size: 0.85rem; color: var(--cor-secundaria); margin-bottom: 20px;">
-          Escolha como o TanoCaixa deve te lembrar dos vencimentos.
-        </p>
-        <div class="campo-grupo" style="flex-direction: row; align-items: center; gap: 10px; margin-bottom: 16px;">
-          <input type="checkbox" id="check-som" style="width: 20px; height: 20px; cursor: pointer;">
-          <label for="check-som" style="cursor: pointer; margin: 0;">Emitir som de aviso</label>
-        </div>
-        <div class="campo-grupo" style="flex-direction: row; align-items: center; gap: 10px; margin-bottom: 16px;">
-          <input type="checkbox" id="check-avisos" style="width: 20px; height: 20px; cursor: pointer;">
-          <label for="check-avisos" style="cursor: pointer; margin: 0;">Mostrar lembretes de vencimento</label>
-        </div>
-        <div class="botoes-modal" style="margin-top: 30px;">
-          <button type="button" class="botao-salvar botao-bloco" id="fechar-modal-config">Salvar Preferências</button>
-        </div>
-      </div>
-    </div>
-
-  </main>
+    <footer>
+      <p>&copy; 2026 TanoCaixaApp. Todos os direitos reservados.</p>
+    </footer>
+  </div>
 </body>
 </html>
