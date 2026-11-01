@@ -62,7 +62,7 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, senha } = req.body;
   try {
     const resultado = await pool.query('SELECT * FROM membros WHERE email = $1', [email]);
-    if (resultado.rows.length === 0) return res.status(401).json({ erro: "E-mail ou senha incorretos." });
+    if (resultado.rows.length === 0) return res.status(401).json({ erro: "E-mail não encontrado. Verifique se digitou corretamente ou crie uma conta." });
     
     const usuario = resultado.rows[0];
     res.json({ 
