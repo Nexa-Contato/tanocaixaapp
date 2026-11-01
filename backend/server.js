@@ -18,7 +18,7 @@ app.get('/', (req, res) => {
 });
 
 // ==========================================
-// AUTENTICAÇÃO E EQUIPE
+// AUTENTICAÇÃO
 // ==========================================
 
 app.post('/api/auth/cadastro', async (req, res) => {
@@ -29,22 +29,17 @@ app.post('/api/auth/cadastro', async (req, res) => {
     const usuarioExiste = await pool.query('SELECT * FROM membros WHERE email = $1', [email]);
     if (usuarioExiste.rows.length > 0) return res.status(400).json({ erro: "Este e-mail já está cadastrado." });
 
-    // 1. Verifica se existe um convite pendente para este e-mail
     const convite = await pool.query('SELECT * FROM convites WHERE email_convidado = $1 AND status = $2', [email, 'pendente']);
-    
     let empresaId;
     
     if (convite.rows.length > 0) {
-      // Se tem convite, usa a empresa do convite e marca o convite como aceito
       empresaId = convite.rows[0].empresa_id;
       await pool.query('UPDATE convites SET status = $1 WHERE id = $2', ['aceito', convite.rows[0].id]);
     } else {
-      // Se não tem convite, cria uma nova empresa (ele é o Gestor)
       const novaEmpresa = await pool.query('INSERT INTO empresas (nome_fantasia) VALUES ($1) RETURNING id', [`Empresa de ${nome}`]);
       empresaId = novaEmpresa.rows[0].id;
     }
 
-    // 2. Cria o usuário na empresa correta
     const cargo = convite.rows.length > 0 ? 'ajudante' : 'gestor';
     const novoUsuario = await pool.query(
       'INSERT INTO membros (empresa_id, user_id, nome, email, cargo) VALUES ($1, $2, $3, $4, $5) RETURNING id',
@@ -79,40 +74,87 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// NOVO: CONVIDAR MEMBRO
-app.post('/api/equipe/convidar', async (req, res) => {
-  const { empresa_id, criado_por, email_convidado } = req.body;
+// ==========================================
+// RECUPERAÇÃO DE SENHA (NEON AUTH)
+// ==========================================
+
+app.post('/api/auth/forget-password', async (req, res) => {
+  const { email } = req.body;
   try {
-    // Verifica se já é membro
-    const jaMembro = await pool.query('SELECT * FROM membros WHERE email = $1 AND empresa_id = $2', [email_convidado, empresa_id]);
-    if (jaMembro.rows.length > 0) return res.status(400).json({ erro: "Esta pessoa já faz parte da sua equipe." });
+    // Aqui chamamos a API do Neon Auth (Better Auth) para disparar o e-mail
+    // A URL base do Neon Auth está no painel do Neon (Auth Base URL)
+    const NEON_AUTH_URL = process.env.NEON_AUTH_URL; 
+    
+    const resposta = await fetch(`${NEON_AUTH_URL}/forget-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        email, 
+        redirectTo: 'https://tanocaixaapp.com.br/app.html' // Onde o usuário vai cair após clicar no link
+      })
+    });
 
-    // Verifica se já tem convite pendente
-    const jaConvidado = await pool.query('SELECT * FROM convites WHERE email_convidado = $1 AND empresa_id = $2 AND status = $3', [email_convidado, empresa_id, 'pendente']);
-    if (jaConvidado.rows.length > 0) return res.status(400).json({ erro: "Já existe um convite pendente para este e-mail." });
-
-    await pool.query(
-      'INSERT INTO convites (empresa_id, email_convidado, criado_por) VALUES ($1, $2, $3)',
-      [empresa_id, email_convidado, criado_por]
-    );
-
-    res.status(201).json({ mensagem: "Convite gerado com sucesso!" });
+    if (resposta.ok) {
+      res.json({ mensagem: "E-mail de recuperação enviado." });
+    } else {
+      res.status(400).json({ erro: "Erro ao enviar e-mail." });
+    }
   } catch (erro) {
     console.error(erro);
-    res.status(500).json({ erro: "Erro ao convidar." });
+    res.status(500).json({ erro: "Erro ao conectar com o serviço de autenticação." });
   }
 });
 
-// NOVO: LISTAR EQUIPE
-app.get('/api/equipe', async (req, res) => {
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  try {
+    const NEON_AUTH_URL = process.env.NEON_AUTH_URL;
+    
+    const resposta = await fetch(`${NEON_AUTH_URL}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    });
+
+    if (resposta.ok) {
+      res.json({ mensagem: "Senha alterada com sucesso." });
+    } else {
+      res.status(400).json({ erro: "Token inválido ou expirado." });
+    }
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: "Erro ao conectar com o serviço de autenticação." });
+  }
+});
+
+// ==========================================
+// CONFIGURAÇÕES DA EMPRESA
+// ==========================================
+
+app.get('/api/empresa', async (req, res) => {
   const { empresa_id } = req.query;
   try {
-    const membros = await pool.query('SELECT id, nome, email, cargo FROM membros WHERE empresa_id = $1', [empresa_id]);
-    const convites = await pool.query('SELECT id, email_convidado, status FROM convites WHERE empresa_id = $1 AND status = $2', [empresa_id, 'pendente']);
-    
-    res.json({ membros: membros.rows, convites: convites.rows });
+    const resultado = await pool.query('SELECT id, nome_fantasia, data_criacao, data_expiracao FROM empresas WHERE id = $1', [empresa_id]);
+    if (resultado.rows.length === 0) return res.status(404).json({ erro: "Empresa não encontrada." });
+    res.json(resultado.rows[0]);
   } catch (erro) {
-    res.status(500).json({ erro: "Erro ao buscar equipe." });
+    res.status(500).json({ erro: "Erro ao buscar dados da empresa." });
+  }
+});
+
+app.put('/api/empresa', async (req, res) => {
+  const { empresa_id, nome_fantasia, criado_por } = req.body;
+  try {
+    await pool.query('UPDATE empresas SET nome_fantasia = $1 WHERE id = $2', [nome_fantasia, empresa_id]);
+    
+    await pool.query(
+      'INSERT INTO logs_auditoria (empresa_id, user_id, acao, tabela_afetada, registro_id) VALUES ($1, $2, $3, $4, $5)',
+      [empresa_id, criado_por, 'editou', 'empresas', empresa_id]
+    );
+    
+    res.json({ mensagem: "Nome da empresa atualizado!" });
+  } catch (erro) {
+    res.status(500).json({ erro: "Erro ao atualizar empresa." });
   }
 });
 
@@ -268,8 +310,38 @@ app.delete('/api/fiscal/:id', async (req, res) => {
 });
 
 // ==========================================
-// AUDITORIA E PDF
+// EQUIPE E AUDITORIA
 // ==========================================
+
+app.post('/api/equipe/convidar', async (req, res) => {
+  const { empresa_id, criado_por, email_convidado } = req.body;
+  try {
+    const jaMembro = await pool.query('SELECT * FROM membros WHERE email = $1 AND empresa_id = $2', [email_convidado, empresa_id]);
+    if (jaMembro.rows.length > 0) return res.status(400).json({ erro: "Esta pessoa já faz parte da sua equipe." });
+
+    const jaConvidado = await pool.query('SELECT * FROM convites WHERE email_convidado = $1 AND empresa_id = $2 AND status = $3', [email_convidado, empresa_id, 'pendente']);
+    if (jaConvidado.rows.length > 0) return res.status(400).json({ erro: "Já existe um convite pendente para este e-mail." });
+
+    await pool.query(
+      'INSERT INTO convites (empresa_id, email_convidado, criado_por) VALUES ($1, $2, $3)',
+      [empresa_id, email_convidado, criado_por]
+    );
+    res.status(201).json({ mensagem: "Convite gerado com sucesso!" });
+  } catch (erro) {
+    res.status(500).json({ erro: "Erro ao convidar." });
+  }
+});
+
+app.get('/api/equipe', async (req, res) => {
+  const { empresa_id } = req.query;
+  try {
+    const membros = await pool.query('SELECT id, nome, email, cargo FROM membros WHERE empresa_id = $1', [empresa_id]);
+    const convites = await pool.query('SELECT id, email_convidado, status FROM convites WHERE empresa_id = $1 AND status = $2', [empresa_id, 'pendente']);
+    res.json({ membros: membros.rows, convites: convites.rows });
+  } catch (erro) {
+    res.status(500).json({ erro: "Erro ao buscar equipe." });
+  }
+});
 
 app.get('/api/auditoria', async (req, res) => {
   const { empresa_id } = req.query;
@@ -286,6 +358,10 @@ app.get('/api/auditoria', async (req, res) => {
     res.status(500).json({ erro: "Erro ao buscar logs de auditoria." });
   }
 });
+
+// ==========================================
+// RELATÓRIO PDF
+// ==========================================
 
 app.get('/api/relatorio', async (req, res) => {
   const { empresa_id, mes } = req.query; 
