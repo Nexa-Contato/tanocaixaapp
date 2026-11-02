@@ -36,6 +36,8 @@ document.addEventListener("DOMContentLoaded", () => {
     mostrarPainel(usuarioLogado);
   }
 
+  configurarRecuperacaoSenha();
+
   const linkIrCadastro = document.getElementById("link-ir-cadastro");
   const linkIrLogin = document.getElementById("link-ir-login");
 
@@ -101,9 +103,9 @@ document.addEventListener("DOMContentLoaded", () => {
           localStorage.setItem("tc-usuario-logado", JSON.stringify(usuarioLogado));
           mostrarPainel(usuarioLogado);
         } else {
-          alert(dados.erro || "E-mail ou senha incorretos.");
+          alert(dados.erro || "Erro ao fazer login. Verifique os dados.");
         }
-      } catch (erro) { alert("Erro ao conectar com o servidor."); }
+      } catch (erro) { alert("Erro de conexão com o servidor. Tente novamente."); }
     });
   }
 });
@@ -121,6 +123,12 @@ function mostrarPainel(usuario) {
   const btnAuditoria = document.getElementById("abrir-auditoria");
   if (usuario.cargo === "gestor" && btnAuditoria) btnAuditoria.style.display = "grid";
   else if (btnAuditoria) btnAuditoria.style.display = "none"; 
+
+  // Esconde o checkbox de permissões se não for gestor
+  const checkPermissao = document.getElementById("check-permissao-apagar");
+  if (usuario.cargo !== "gestor" && checkPermissao) {
+    checkPermissao.closest('.campo-grupo').style.display = "none";
+  }
 
   configurarTema();
   configurarPrivacidade();
@@ -220,29 +228,33 @@ function configurarConfiguracoes() {
 }
 
 /* ========================================
-   CONFIGURAÇÕES DA EMPRESA
+   CONFIGURAÇÕES DA EMPRESA (COM PERMISSÕES)
 ======================================== */
 
 function configurarEmpresa() {
   const formEmpresa = document.getElementById("form-empresa");
   const inputNome = document.getElementById("config-nome-empresa");
+  const checkPermissao = document.getElementById("check-permissao-apagar");
 
   if (!formEmpresa || !inputNome) return;
 
-  async function carregarNomeEmpresa() {
+  async function carregarDadosEmpresa() {
     try {
       const res = await fetch(`https://tanocaixa-backend.onrender.com/api/empresa?empresa_id=${usuarioLogado.empresa_id}`);
       if (res.ok) {
         const dados = await res.json();
         if (dados.nome_fantasia) inputNome.value = dados.nome_fantasia;
+        if (checkPermissao) checkPermissao.checked = dados.permitir_ajudante_apagar || false;
       }
     } catch (e) { console.error(e); }
   }
-  carregarNomeEmpresa();
+  carregarDadosEmpresa();
 
   formEmpresa.addEventListener("submit", async (e) => {
     e.preventDefault();
     const novoNome = inputNome.value;
+    const permitirApagar = checkPermissao ? checkPermissao.checked : false;
+
     try {
       const res = await fetch("https://tanocaixa-backend.onrender.com/api/empresa", {
         method: "PUT",
@@ -250,10 +262,11 @@ function configurarEmpresa() {
         body: JSON.stringify({ 
           empresa_id: usuarioLogado.empresa_id, 
           criado_por: usuarioLogado.id,
-          nome_fantasia: novoNome 
+          nome_fantasia: novoNome,
+          permitir_ajudante_apagar: permitirApagar
         })
       });
-      if (res.ok) alert("Nome da empresa atualizado com sucesso!");
+      if (res.ok) alert("Configurações atualizadas com sucesso!");
     } catch (e) { alert("Erro ao salvar."); }
   });
 }
@@ -846,7 +859,7 @@ function renderizarFiscal() {
 }
 
 /* ========================================
-   AÇÕES (LIXEIRAS CONECTADAS À NUVEM)
+   AÇÕES (LIXEIRAS COM PERMISSÕES)
 ======================================== */
 
 window.excluirTransacao = async function(id) {
@@ -857,13 +870,19 @@ window.excluirTransacao = async function(id) {
   if (confirm(`Deseja apagar o lançamento "${t.descricao}" no valor de ${formatar(parseFloat(t.valor))}?`)) {
     if (confirm("Apagar definitivamente?")) {
       try {
-        await fetch(`https://tanocaixa-backend.onrender.com/api/transacoes/${id}`, {
+        const res = await fetch(`https://tanocaixa-backend.onrender.com/api/transacoes/${id}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
         });
-        await atualizarTela();
-      } catch (erro) { alert("Erro ao apagar no banco."); }
+        
+        if (res.ok) {
+          await atualizarTela();
+        } else {
+          const data = await res.json();
+          alert(data.erro || "Erro ao apagar.");
+        }
+      } catch (erro) { alert("Erro de conexão."); }
     }
   }
 };
@@ -872,13 +891,19 @@ window.pagarConta = async function(id, descricao, valor) {
   if (confirm(`Confirmar pagamento de "${descricao}" no valor de R$ ${parseFloat(valor).toFixed(2)}?`)) {
     try {
       await registrarTransacao("saida", parseFloat(valor), `Pgto: ${descricao}`);
-      await fetch(`https://tanocaixa-backend.onrender.com/api/contas/${id}`, {
+      const res = await fetch(`https://tanocaixa-backend.onrender.com/api/contas/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
       });
-      await atualizarTela();
-    } catch (erro) { alert("Erro ao pagar conta."); }
+      
+      if (res.ok) {
+        await atualizarTela();
+      } else {
+        const data = await res.json();
+        alert(data.erro || "Erro ao pagar conta.");
+      }
+    } catch (erro) { alert("Erro de conexão."); }
   }
 };
 
@@ -886,13 +911,19 @@ window.excluirConta = async function(id) {
   if (confirm("Deseja apagar esta conta? (Isso não gera saída no caixa)")) {
     if (confirm("Apagar definitivamente?")) {
       try {
-        await fetch(`https://tanocaixa-backend.onrender.com/api/contas/${id}`, {
+        const res = await fetch(`https://tanocaixa-backend.onrender.com/api/contas/${id}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
         });
-        await atualizarTela();
-      } catch (erro) { alert("Erro ao apagar conta."); }
+        
+        if (res.ok) {
+          await atualizarTela();
+        } else {
+          const data = await res.json();
+          alert(data.erro || "Erro ao apagar conta.");
+        }
+      } catch (erro) { alert("Erro de conexão."); }
     }
   }
 };
@@ -912,13 +943,86 @@ window.excluirTarefaFiscal = async function(id) {
   if (confirm("Deseja apagar esta tarefa fiscal?")) {
     if (confirm("Apagar definitivamente?")) {
       try {
-        await fetch(`https://tanocaixa-backend.onrender.com/api/fiscal/${id}`, {
+        const res = await fetch(`https://tanocaixa-backend.onrender.com/api/fiscal/${id}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id })
         });
-        await atualizarTela();
-      } catch (erro) { alert("Erro ao apagar tarefa."); }
+        
+        if (res.ok) {
+          await atualizarTela();
+        } else {
+          const data = await res.json();
+          alert(data.erro || "Erro ao apagar tarefa.");
+        }
+      } catch (erro) { alert("Erro de conexão."); }
     }
   }
 };
+
+/* ========================================
+   RECUPERAÇÃO DE SENHA
+======================================== */
+
+function configurarRecuperacaoSenha() {
+  const linkEsqueci = document.getElementById("link-esqueci-senha");
+  const formRedefinir = document.getElementById("form-redefinir-senha");
+
+  if (linkEsqueci) {
+    linkEsqueci.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const email = prompt("Digite o seu e-mail para receber o link de recuperação:");
+      if (!email) return;
+
+      try {
+        const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/auth/forget-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email })
+        });
+        
+        if (resposta.ok) {
+          alert("Se o e-mail existir, você receberá um link para criar uma nova senha.");
+        } else {
+          alert("Erro ao solicitar recuperação. Tente novamente.");
+        }
+      } catch (erro) { alert("Erro de conexão."); }
+    });
+  }
+
+  if (formRedefinir) {
+    formRedefinir.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const novaSenha = document.getElementById("nova-senha").value;
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+
+      if (!token) {
+        alert("Token inválido ou expirado. Solicite um novo link.");
+        return;
+      }
+
+      try {
+        const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/auth/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, newPassword: novaSenha })
+        });
+        
+        if (resposta.ok) {
+          alert("Senha alterada com sucesso! Faça login.");
+          document.getElementById("tela-redefinir-senha").style.display = "none";
+          document.getElementById("tela-login").style.display = "flex";
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+          alert("Erro ao alterar a senha. O link pode ter expirado.");
+        }
+      } catch (erro) { alert("Erro de conexão."); }
+    });
+  }
+
+  if (window.location.search.includes("token=")) {
+    document.getElementById("tela-login").style.display = "none";
+    document.getElementById("tela-redefinir-senha").style.display = "flex";
+  }
+}
