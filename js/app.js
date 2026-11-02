@@ -103,9 +103,9 @@ document.addEventListener("DOMContentLoaded", () => {
           localStorage.setItem("tc-usuario-logado", JSON.stringify(usuarioLogado));
           mostrarPainel(usuarioLogado);
         } else {
-          alert(dados.erro || "Erro ao fazer login. Verifique os dados.");
+          alert(dados.erro || "Erro ao fazer login.");
         }
-      } catch (erro) { alert("Erro de conexão com o servidor. Tente novamente."); }
+      } catch (erro) { alert("Erro de conexão com o servidor."); }
     });
   }
 });
@@ -124,7 +124,6 @@ function mostrarPainel(usuario) {
   if (usuario.cargo === "gestor" && btnAuditoria) btnAuditoria.style.display = "grid";
   else if (btnAuditoria) btnAuditoria.style.display = "none"; 
 
-  // Esconde o checkbox de permissões se não for gestor
   const checkPermissao = document.getElementById("check-permissao-apagar");
   if (usuario.cargo !== "gestor" && checkPermissao) {
     checkPermissao.closest('.campo-grupo').style.display = "none";
@@ -143,6 +142,10 @@ function mostrarPainel(usuario) {
   atualizarTela();
   setInterval(verificarAvisos, 60000); 
 }
+
+/* ========================================
+   CONFIGURAÇÕES E TEMA
+======================================== */
 
 function configurarTema() {
   const botaoTema = document.getElementById("alternar-tema");
@@ -191,10 +194,6 @@ function configurarLimparDados() {
   });
 }
 
-/* ========================================
-   CONFIGURAÇÕES (MODAL)
-======================================== */
-
 function configurarConfiguracoes() {
   const modalConfig = document.getElementById("modal-config");
   const btnAbrirConfig = document.getElementById("abrir-configuracoes");
@@ -226,10 +225,6 @@ function configurarConfiguracoes() {
     if (somAtivo) tocarSom("sucesso");
   });
 }
-
-/* ========================================
-   CONFIGURAÇÕES DA EMPRESA (COM PERMISSÕES)
-======================================== */
 
 function configurarEmpresa() {
   const formEmpresa = document.getElementById("form-empresa");
@@ -271,10 +266,6 @@ function configurarEmpresa() {
   });
 }
 
-/* ========================================
-   BOTÃO PDF
-======================================== */
-
 function configurarBotaoPDF() {
   const btnPDF = document.getElementById("btn-baixar-pdf");
   if (!btnPDF) return;
@@ -288,7 +279,7 @@ function configurarBotaoPDF() {
 }
 
 /* ========================================
-   TRILHA DE AUDITORIA
+   AUDITORIA E EQUIPE
 ======================================== */
 
 function configurarAuditoria() {
@@ -365,10 +356,6 @@ function renderizarAuditoria(logs) {
     `;
   }).join("");
 }
-
-/* ========================================
-   MINHA EQUIPE
-======================================== */
 
 function configurarEquipe() {
   const btnAbrir = document.getElementById("abrir-equipe");
@@ -526,10 +513,6 @@ function mostrarToast(titulo, mensagem, tipo, idConta, ehFiscal = false) {
   }, 15000);
 }
 
-/* ========================================
-   LÓGICA DE VERIFICAÇÃO DE AVISOS
-======================================== */
-
 function verificarAvisos() {
   if (!avisosAtivos) return;
 
@@ -616,14 +599,19 @@ async function buscarDadosNuvem() {
   } catch (erro) { console.error(erro); }
 }
 
-async function registrarTransacao(tipo, valor, descricao) {
+async function registrarTransacao(tipo, valor, descricao, categoria) {
   if (!usuarioLogado) return;
   try {
     await fetch("https://tanocaixa-backend.onrender.com/api/transacoes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id, tipo, valor, descricao
+        empresa_id: usuarioLogado.empresa_id, 
+        criado_por: usuarioLogado.id, 
+        tipo, 
+        valor, 
+        descricao,
+        categoria
       })
     });
     await atualizarTela();
@@ -631,7 +619,7 @@ async function registrarTransacao(tipo, valor, descricao) {
 }
 
 /* ========================================
-   MODAIS DE ENTRADA, SAÍDA E CONTAS
+   MODAIS COM CATEGORIAS
 ======================================== */
 
 function configurarModais() {
@@ -648,7 +636,8 @@ function configurarModais() {
       e.preventDefault();
       const v = parseFloat(document.getElementById("valor-entrada").value);
       const d = document.getElementById("descricao-entrada").value;
-      if (v > 0) { registrarTransacao("entrada", v, d); fecharE(); }
+      const cat = document.getElementById("categoria-entrada").value;
+      if (v > 0) { registrarTransacao("entrada", v, d, cat); fecharE(); }
     });
   }
 
@@ -665,7 +654,8 @@ function configurarModais() {
       e.preventDefault();
       const v = parseFloat(document.getElementById("valor-saida").value);
       const d = document.getElementById("descricao-saida").value;
-      if (v > 0) { registrarTransacao("saida", v, d); fecharS(); }
+      const cat = document.getElementById("categoria-saida").value;
+      if (v > 0) { registrarTransacao("saida", v, d, cat); fecharS(); }
     });
   }
 
@@ -683,12 +673,21 @@ function configurarModais() {
       const d = document.getElementById("descricao-conta").value;
       const v = parseFloat(document.getElementById("valor-conta").value);
       const data = document.getElementById("data-conta").value;
+      const cat = document.getElementById("categoria-conta").value;
+      
       if (v > 0 && d && data) {
         try {
           const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/contas", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ empresa_id: usuarioLogado.empresa_id, criado_por: usuarioLogado.id, descricao: d, valor: v, data_vencimento: data })
+            body: JSON.stringify({ 
+              empresa_id: usuarioLogado.empresa_id, 
+              criado_por: usuarioLogado.id, 
+              descricao: d, 
+              valor: v, 
+              data_vencimento: data,
+              categoria: cat
+            })
           });
           if (resposta.ok) { await atualizarTela(); fecharC(); }
         } catch (erro) { alert("Erro ao salvar conta."); }
@@ -787,7 +786,7 @@ function renderizarHistorico() {
           <div class="item-historico-icone ${isEntrada ? 'entrada' : 'saida'}">${isEntrada ? '↑' : '↓'}</div>
           <div class="item-historico-texto">
             <span class="item-historico-desc">${t.descricao}</span>
-            <span class="item-historico-data">${dataFormatada}</span>
+            <span class="item-historico-data">${dataFormatada} · ${t.categoria || 'Outros'}</span>
           </div>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
@@ -819,7 +818,7 @@ function renderizarContas() {
       <li class="item-conta">
         <div class="item-conta-info">
           <span class="item-conta-desc">${c.descricao}</span>
-          <span class="item-conta-data">Vence em: ${dataFormatada}</span>
+          <span class="item-conta-data">Vence em: ${dataFormatada} · ${c.categoria || 'Outros'}</span>
         </div>
         <div class="item-conta-detalhes">
           <span class="item-conta-valor">${valorTexto}</span>
@@ -890,7 +889,7 @@ window.excluirTransacao = async function(id) {
 window.pagarConta = async function(id, descricao, valor) {
   if (confirm(`Confirmar pagamento de "${descricao}" no valor de R$ ${parseFloat(valor).toFixed(2)}?`)) {
     try {
-      await registrarTransacao("saida", parseFloat(valor), `Pgto: ${descricao}`);
+      await registrarTransacao("saida", parseFloat(valor), `Pgto: ${descricao}`, "Contas");
       const res = await fetch(`https://tanocaixa-backend.onrender.com/api/contas/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
