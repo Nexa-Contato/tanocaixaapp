@@ -62,7 +62,10 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, senha } = req.body;
   try {
     const resultado = await pool.query('SELECT * FROM membros WHERE email = $1', [email]);
-    if (resultado.rows.length === 0) return res.status(401).json({ erro: "E-mail não encontrado. Verifique se digitou corretamente ou crie uma conta." });
+    
+    if (resultado.rows.length === 0) {
+      return res.status(401).json({ erro: "E-mail não encontrado. Verifique se digitou corretamente ou crie uma conta." });
+    }
     
     const usuario = resultado.rows[0];
     res.json({ 
@@ -75,56 +78,35 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ==========================================
-// RECUPERAÇÃO DE SENHA (NEON AUTH)
+// RECUPERAÇÃO DE SENHA
 // ==========================================
 
 app.post('/api/auth/forget-password', async (req, res) => {
   const { email } = req.body;
   try {
-    // Aqui chamamos a API do Neon Auth (Better Auth) para disparar o e-mail
-    // A URL base do Neon Auth está no painel do Neon (Auth Base URL)
     const NEON_AUTH_URL = process.env.NEON_AUTH_URL; 
-    
     const resposta = await fetch(`${NEON_AUTH_URL}/forget-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        email, 
-        redirectTo: 'https://tanocaixaapp.com.br/app.html' // Onde o usuário vai cair após clicar no link
-      })
+      body: JSON.stringify({ email, redirectTo: 'https://tanocaixaapp.com.br/app.html' })
     });
-
-    if (resposta.ok) {
-      res.json({ mensagem: "E-mail de recuperação enviado." });
-    } else {
-      res.status(400).json({ erro: "Erro ao enviar e-mail." });
-    }
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: "Erro ao conectar com o serviço de autenticação." });
-  }
+    if (resposta.ok) res.json({ mensagem: "E-mail enviado." });
+    else res.status(400).json({ erro: "Erro ao enviar." });
+  } catch (erro) { res.status(500).json({ erro: "Erro de conexão." }); }
 });
 
 app.post('/api/auth/reset-password', async (req, res) => {
   const { token, newPassword } = req.body;
   try {
     const NEON_AUTH_URL = process.env.NEON_AUTH_URL;
-    
     const resposta = await fetch(`${NEON_AUTH_URL}/reset-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, newPassword })
     });
-
-    if (resposta.ok) {
-      res.json({ mensagem: "Senha alterada com sucesso." });
-    } else {
-      res.status(400).json({ erro: "Token inválido ou expirado." });
-    }
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: "Erro ao conectar com o serviço de autenticação." });
-  }
+    if (resposta.ok) res.json({ mensagem: "Senha alterada." });
+    else res.status(400).json({ erro: "Token inválido." });
+  } catch (erro) { res.status(500).json({ erro: "Erro de conexão." }); }
 });
 
 // ==========================================
@@ -134,28 +116,22 @@ app.post('/api/auth/reset-password', async (req, res) => {
 app.get('/api/empresa', async (req, res) => {
   const { empresa_id } = req.query;
   try {
-    const resultado = await pool.query('SELECT id, nome_fantasia, data_criacao, data_expiracao FROM empresas WHERE id = $1', [empresa_id]);
+    const resultado = await pool.query('SELECT id, nome_fantasia, data_criacao, data_expiracao, permitir_ajudante_apagar FROM empresas WHERE id = $1', [empresa_id]);
     if (resultado.rows.length === 0) return res.status(404).json({ erro: "Empresa não encontrada." });
     res.json(resultado.rows[0]);
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao buscar dados da empresa." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao buscar empresa." }); }
 });
 
 app.put('/api/empresa', async (req, res) => {
-  const { empresa_id, nome_fantasia, criado_por } = req.body;
+  const { empresa_id, nome_fantasia, criado_por, permitir_ajudante_apagar } = req.body;
   try {
-    await pool.query('UPDATE empresas SET nome_fantasia = $1 WHERE id = $2', [nome_fantasia, empresa_id]);
-    
+    await pool.query('UPDATE empresas SET nome_fantasia = $1, permitir_ajudante_apagar = $2 WHERE id = $3', [nome_fantasia, permitir_ajudante_apagar, empresa_id]);
     await pool.query(
       'INSERT INTO logs_auditoria (empresa_id, user_id, acao, tabela_afetada, registro_id) VALUES ($1, $2, $3, $4, $5)',
       [empresa_id, criado_por, 'editou', 'empresas', empresa_id]
     );
-    
-    res.json({ mensagem: "Nome da empresa atualizado!" });
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao atualizar empresa." });
-  }
+    res.json({ mensagem: "Empresa atualizada!" });
+  } catch (erro) { res.status(500).json({ erro: "Erro ao atualizar empresa." }); }
 });
 
 // ==========================================
@@ -167,9 +143,7 @@ app.get('/api/transacoes', async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM transacoes WHERE empresa_id = $1 ORDER BY data_transacao DESC', [empresa_id]);
     res.json(resultado.rows);
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao buscar transações." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao buscar transações." }); }
 });
 
 app.post('/api/transacoes', async (req, res) => {
@@ -184,24 +158,28 @@ app.post('/api/transacoes', async (req, res) => {
       [empresa_id, criado_por, 'criou', 'transacoes', nova.rows[0].id, JSON.stringify({ tipo, valor, descricao })]
     );
     res.status(201).json(nova.rows[0]);
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao salvar transação." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao salvar transação." }); }
 });
 
 app.delete('/api/transacoes/:id', async (req, res) => {
   const { id } = req.params;
   const { empresa_id, criado_por } = req.body;
   try {
+    // VERIFICAÇÃO DE PERMISSÃO
+    const user = await pool.query('SELECT cargo FROM membros WHERE id = $1', [criado_por]);
+    const config = await pool.query('SELECT permitir_ajudante_apagar FROM empresas WHERE id = $1', [empresa_id]);
+    
+    if (user.rows[0].cargo === 'ajudante' && !config.rows[0].permitir_ajudante_apagar) {
+      return res.status(403).json({ erro: "Permissão negada. O gestor não permite que ajudantes apaguem lançamentos." });
+    }
+
     await pool.query(
       'INSERT INTO logs_auditoria (empresa_id, user_id, acao, tabela_afetada, registro_id) VALUES ($1, $2, $3, $4, $5)',
       [empresa_id, criado_por, 'apagou', 'transacoes', id]
     );
     await pool.query('DELETE FROM transacoes WHERE id = $1 AND empresa_id = $2', [id, empresa_id]);
     res.json({ mensagem: "Transação apagada." });
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao apagar transação." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao apagar transação." }); }
 });
 
 // ==========================================
@@ -213,9 +191,7 @@ app.get('/api/contas', async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM contas WHERE empresa_id = $1 ORDER BY data_vencimento ASC', [empresa_id]);
     res.json(resultado.rows);
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao buscar contas." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao buscar contas." }); }
 });
 
 app.post('/api/contas', async (req, res) => {
@@ -231,24 +207,27 @@ app.post('/api/contas', async (req, res) => {
       [empresa_id, criado_por, 'criou', 'contas', nova.rows[0].id, JSON.stringify({ descricao, valor })]
     );
     res.status(201).json(nova.rows[0]);
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao salvar conta." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao salvar conta." }); }
 });
 
 app.delete('/api/contas/:id', async (req, res) => {
   const { id } = req.params;
   const { empresa_id, criado_por } = req.body;
   try {
+    const user = await pool.query('SELECT cargo FROM membros WHERE id = $1', [criado_por]);
+    const config = await pool.query('SELECT permitir_ajudante_apagar FROM empresas WHERE id = $1', [empresa_id]);
+    
+    if (user.rows[0].cargo === 'ajudante' && !config.rows[0].permitir_ajudante_apagar) {
+      return res.status(403).json({ erro: "Permissão negada." });
+    }
+
     await pool.query(
       'INSERT INTO logs_auditoria (empresa_id, user_id, acao, tabela_afetada, registro_id) VALUES ($1, $2, $3, $4, $5)',
       [empresa_id, criado_por, 'apagou/pagou', 'contas', id]
     );
     await pool.query('DELETE FROM contas WHERE id = $1 AND empresa_id = $2', [id, empresa_id]);
     res.json({ mensagem: "Conta resolvida." });
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao resolver conta." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao resolver conta." }); }
 });
 
 // ==========================================
@@ -260,9 +239,7 @@ app.get('/api/fiscal', async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM checklist_fiscal WHERE empresa_id = $1 ORDER BY data_vencimento ASC', [empresa_id]);
     res.json(resultado.rows);
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao buscar tarefas fiscais." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao buscar tarefas." }); }
 });
 
 app.post('/api/fiscal', async (req, res) => {
@@ -278,9 +255,7 @@ app.post('/api/fiscal', async (req, res) => {
       [empresa_id, criado_por, 'criou', 'checklist_fiscal', nova.rows[0].id, JSON.stringify({ descricao })]
     );
     res.status(201).json(nova.rows[0]);
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao salvar tarefa fiscal." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao salvar tarefa." }); }
 });
 
 app.put('/api/fiscal/:id', async (req, res) => {
@@ -289,24 +264,27 @@ app.put('/api/fiscal/:id', async (req, res) => {
   try {
     await pool.query('UPDATE checklist_fiscal SET concluida = $1 WHERE id = $2', [concluida, id]);
     res.json({ mensagem: "Status atualizado." });
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao atualizar tarefa." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao atualizar." }); }
 });
 
 app.delete('/api/fiscal/:id', async (req, res) => {
   const { id } = req.params;
   const { empresa_id, criado_por } = req.body;
   try {
+    const user = await pool.query('SELECT cargo FROM membros WHERE id = $1', [criado_por]);
+    const config = await pool.query('SELECT permitir_ajudante_apagar FROM empresas WHERE id = $1', [empresa_id]);
+    
+    if (user.rows[0].cargo === 'ajudante' && !config.rows[0].permitir_ajudante_apagar) {
+      return res.status(403).json({ erro: "Permissão negada." });
+    }
+
     await pool.query(
       'INSERT INTO logs_auditoria (empresa_id, user_id, acao, tabela_afetada, registro_id) VALUES ($1, $2, $3, $4, $5)',
       [empresa_id, criado_por, 'apagou', 'checklist_fiscal', id]
     );
     await pool.query('DELETE FROM checklist_fiscal WHERE id = $1 AND empresa_id = $2', [id, empresa_id]);
     res.json({ mensagem: "Tarefa apagada." });
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao apagar tarefa." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao apagar." }); }
 });
 
 // ==========================================
@@ -317,19 +295,14 @@ app.post('/api/equipe/convidar', async (req, res) => {
   const { empresa_id, criado_por, email_convidado } = req.body;
   try {
     const jaMembro = await pool.query('SELECT * FROM membros WHERE email = $1 AND empresa_id = $2', [email_convidado, empresa_id]);
-    if (jaMembro.rows.length > 0) return res.status(400).json({ erro: "Esta pessoa já faz parte da sua equipe." });
+    if (jaMembro.rows.length > 0) return res.status(400).json({ erro: "Já faz parte da equipe." });
 
     const jaConvidado = await pool.query('SELECT * FROM convites WHERE email_convidado = $1 AND empresa_id = $2 AND status = $3', [email_convidado, empresa_id, 'pendente']);
-    if (jaConvidado.rows.length > 0) return res.status(400).json({ erro: "Já existe um convite pendente para este e-mail." });
+    if (jaConvidado.rows.length > 0) return res.status(400).json({ erro: "Convite já pendente." });
 
-    await pool.query(
-      'INSERT INTO convites (empresa_id, email_convidado, criado_por) VALUES ($1, $2, $3)',
-      [empresa_id, email_convidado, criado_por]
-    );
-    res.status(201).json({ mensagem: "Convite gerado com sucesso!" });
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao convidar." });
-  }
+    await pool.query('INSERT INTO convites (empresa_id, email_convidado, criado_por) VALUES ($1, $2, $3)', [empresa_id, email_convidado, criado_por]);
+    res.status(201).json({ mensagem: "Convite gerado!" });
+  } catch (erro) { res.status(500).json({ erro: "Erro ao convidar." }); }
 });
 
 app.get('/api/equipe', async (req, res) => {
@@ -338,9 +311,7 @@ app.get('/api/equipe', async (req, res) => {
     const membros = await pool.query('SELECT id, nome, email, cargo FROM membros WHERE empresa_id = $1', [empresa_id]);
     const convites = await pool.query('SELECT id, email_convidado, status FROM convites WHERE empresa_id = $1 AND status = $2', [empresa_id, 'pendente']);
     res.json({ membros: membros.rows, convites: convites.rows });
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao buscar equipe." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao buscar equipe." }); }
 });
 
 app.get('/api/auditoria', async (req, res) => {
@@ -354,9 +325,7 @@ app.get('/api/auditoria', async (req, res) => {
       ORDER BY l.data_hora DESC
     `, [empresa_id]);
     res.json(resultado.rows);
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao buscar logs de auditoria." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao buscar auditoria." }); }
 });
 
 // ==========================================
@@ -425,9 +394,7 @@ app.get('/api/relatorio', async (req, res) => {
     doc.fontSize(14).fillColor('#294b3b').text(`Saldo do Mês:`, 350, doc.y, { width: 100, align: 'right' });
     doc.fillColor(saldo < 0 ? '#d68c75' : '#426b4c').text(`${saldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 450, doc.y, { width: 100, align: 'right' });
     doc.end();
-  } catch (erro) {
-    res.status(500).json({ erro: "Erro ao gerar PDF." });
-  }
+  } catch (erro) { res.status(500).json({ erro: "Erro ao gerar PDF." }); }
 });
 
 const PORT = process.env.PORT || 3000;
