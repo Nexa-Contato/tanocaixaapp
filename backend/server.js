@@ -62,10 +62,7 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, senha } = req.body;
   try {
     const resultado = await pool.query('SELECT * FROM membros WHERE email = $1', [email]);
-    
-    if (resultado.rows.length === 0) {
-      return res.status(401).json({ erro: "E-mail não encontrado. Verifique se digitou corretamente ou crie uma conta." });
-    }
+    if (resultado.rows.length === 0) return res.status(401).json({ erro: "E-mail não encontrado." });
     
     const usuario = resultado.rows[0];
     res.json({ 
@@ -147,15 +144,15 @@ app.get('/api/transacoes', async (req, res) => {
 });
 
 app.post('/api/transacoes', async (req, res) => {
-  const { empresa_id, criado_por, tipo, valor, descricao } = req.body;
+  const { empresa_id, criado_por, tipo, valor, descricao, categoria } = req.body;
   try {
     const nova = await pool.query(
-      'INSERT INTO transacoes (empresa_id, criado_por, tipo, valor, descricao) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [empresa_id, criado_por, tipo, valor, descricao]
+      'INSERT INTO transacoes (empresa_id, criado_por, tipo, valor, descricao, categoria) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [empresa_id, criado_por, tipo, valor, descricao, categoria || 'Outros']
     );
     await pool.query(
       'INSERT INTO logs_auditoria (empresa_id, user_id, acao, tabela_afetada, registro_id, detalhes) VALUES ($1, $2, $3, $4, $5, $6)',
-      [empresa_id, criado_por, 'criou', 'transacoes', nova.rows[0].id, JSON.stringify({ tipo, valor, descricao })]
+      [empresa_id, criado_por, 'criou', 'transacoes', nova.rows[0].id, JSON.stringify({ tipo, valor, descricao, categoria })]
     );
     res.status(201).json(nova.rows[0]);
   } catch (erro) { res.status(500).json({ erro: "Erro ao salvar transação." }); }
@@ -165,7 +162,6 @@ app.delete('/api/transacoes/:id', async (req, res) => {
   const { id } = req.params;
   const { empresa_id, criado_por } = req.body;
   try {
-    // VERIFICAÇÃO DE PERMISSÃO
     const user = await pool.query('SELECT cargo FROM membros WHERE id = $1', [criado_por]);
     const config = await pool.query('SELECT permitir_ajudante_apagar FROM empresas WHERE id = $1', [empresa_id]);
     
@@ -195,16 +191,16 @@ app.get('/api/contas', async (req, res) => {
 });
 
 app.post('/api/contas', async (req, res) => {
-  const { empresa_id, criado_por, descricao, valor, data_vencimento } = req.body;
+  const { empresa_id, criado_por, descricao, valor, data_vencimento, categoria } = req.body;
   try {
     const dataLimpa = data_vencimento.split('T')[0]; 
     const nova = await pool.query(
-      'INSERT INTO contas (empresa_id, criado_por, descricao, valor, data_vencimento) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [empresa_id, criado_por, descricao, valor, dataLimpa]
+      'INSERT INTO contas (empresa_id, criado_por, descricao, valor, data_vencimento, categoria) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [empresa_id, criado_por, descricao, valor, dataLimpa, categoria || 'Outros']
     );
     await pool.query(
       'INSERT INTO logs_auditoria (empresa_id, user_id, acao, tabela_afetada, registro_id, detalhes) VALUES ($1, $2, $3, $4, $5, $6)',
-      [empresa_id, criado_por, 'criou', 'contas', nova.rows[0].id, JSON.stringify({ descricao, valor })]
+      [empresa_id, criado_por, 'criou', 'contas', nova.rows[0].id, JSON.stringify({ descricao, valor, categoria })]
     );
     res.status(201).json(nova.rows[0]);
   } catch (erro) { res.status(500).json({ erro: "Erro ao salvar conta." }); }
@@ -329,7 +325,7 @@ app.get('/api/auditoria', async (req, res) => {
 });
 
 // ==========================================
-// RELATÓRIO PDF
+// RELATÓRIO PDF (COM CATEGORIA)
 // ==========================================
 
 app.get('/api/relatorio', async (req, res) => {
@@ -362,7 +358,8 @@ app.get('/api/relatorio', async (req, res) => {
     const tableTop = doc.y;
     doc.fontSize(10).fillColor('#788078');
     doc.text("Data", 50, tableTop);
-    doc.text("Descrição", 120, tableTop);
+    doc.text("Descrição", 110, tableTop);
+    doc.text("Categoria", 320, tableTop);
     doc.text("Valor", 450, tableTop, { width: 100, align: 'right' });
     doc.moveDown(0.5);
     doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke('#e5e9e2');
@@ -382,7 +379,8 @@ app.get('/api/relatorio', async (req, res) => {
         else saldo -= parseFloat(t.valor);
         const y = doc.y;
         doc.fontSize(10).fillColor('#35443a').text(data, 50, y);
-        doc.text(t.descricao, 120, y, { width: 300 });
+        doc.text(t.descricao, 110, y, { width: 200 });
+        doc.text(t.categoria || 'Outros', 320, y, { width: 120 });
         doc.fillColor(cor).text(`${sinal} ${valor}`, 450, y, { width: 100, align: 'right' });
         doc.moveDown(1);
       });
