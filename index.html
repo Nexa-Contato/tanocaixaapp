@@ -43,8 +43,14 @@
     .btn-cta:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(41,75,59,0.2); }
     .aviso { display: block; margin-top: 15px; font-size: 0.9rem; color: var(--cor-secundaria); }
 
-    /* Benefícios */
-    .beneficios { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; padding: 60px 0; }
+    /* Benefícios - ALTERAÇÃO AQUI */
+    .beneficios { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); /* Força 2 colunas */
+      gap: 30px; 
+      padding: 60px 0; 
+    }
+    
     .card {
       background: var(--cor-cartao); padding: 30px; border-radius: 16px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e5e9e2;
@@ -54,6 +60,11 @@
     
     /* Rodapé */
     footer { text-align: center; padding: 40px 0; color: var(--cor-secundaria); font-size: 0.9rem; border-top: 1px solid #e5e9e2; margin-top: 40px; }
+
+    /* Ajuste para celular (volta a ficar 1 coluna) */
+    @media (max-width: 768px) {
+      .beneficios { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -68,13 +79,13 @@
         </svg>
         TanoCaixa
       </div>
-      <a href="/app.html" class="btn-login">Acessar App</a>
+      <a href="app.html" class="btn-login">Acessar App</a>
     </header>
 
     <section class="hero">
       <h1>Gerir um negócio é mais leve com um parceiro de confiança.</h1>
       <p>Deixe o seu caixa com a gente: um velho amigo, mas com a precisão de um <strong>auxiliar competente</strong>.</p>
-      <a href="/app.html" class="btn-cta">Quero esse parceiro no meu negócio</a>
+      <a href="app.html" class="btn-cta">Quero esse parceiro no meu negócio</a>
       <span class="aviso">Teste grátis por 30 dias. Sem cartão de crédito.</span>
     </section>
 
