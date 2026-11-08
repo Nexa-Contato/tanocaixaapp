@@ -1084,3 +1084,5 @@ function irParaAssinatura() {
 document.addEventListener('DOMContentLoaded', () => {
   verificarAssinatura();
 });
+
+document.body.style.backgroundColor = "#ff0000";
