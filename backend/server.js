@@ -588,7 +588,7 @@ app.get('/api/empresa/status', async (req, res) => {
     }
 
     const resultado = await pool.query(
-      'SELECT status_assinatura, criado_em FROM empresas WHERE id = $1',
+      'SELECT status_assinatura, data_criacao FROM empresas WHERE id = $1',
       [empresaId]
     );
 
@@ -597,7 +597,7 @@ app.get('/api/empresa/status', async (req, res) => {
     }
 
     const empresa = resultado.rows[0];
-    const criadoEm = new Date(empresa.criado_em);
+    const criadoEm = new Date(empresa.data_criacao);
     const trialFim = new Date(criadoEm);
     trialFim.setDate(trialFim.getDate() + 30);
 
