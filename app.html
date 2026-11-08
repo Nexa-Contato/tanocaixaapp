@@ -1036,8 +1036,7 @@ async function verificarAssinatura() {
     const usuario = JSON.parse(usuarioSalvo);
     // O campo do ID da empresa no seu localStorage pode ter outro nome.
     // Abra o DevTools (F12) > Application > Local Storage e confira como está salvo!
-    const idDaEmpresa = usuario.id 
-
+    const idDaEmpresa = usuario.empresa_id;
     if (!idDaEmpresa) return;
 
     const resposta = await fetch(
