@@ -1025,3 +1025,62 @@ function configurarRecuperacaoSenha() {
     document.getElementById("tela-redefinir-senha").style.display = "flex";
   }
 }
+
+// ===== BLOQUEIO POR ASSINATURA =====
+
+async function verificarAssinatura() {
+  try {
+    const usuarioSalvo = localStorage.getItem('tc-usuario-logado');
+    if (!usuarioSalvo) return; 
+
+    const usuario = JSON.parse(usuarioSalvo);
+    const idDaEmpresa = usuario.empresa_id; 
+
+    if (!idDaEmpresa) return;
+
+    // Adicionei um "bate-papo" no console para você ver se o código está rodando!
+    console.log("🔎 Verificando assinatura para a empresa:", idDaEmpresa);
+
+    const resposta = await fetch(
+      'https://tanocaixa-backend.onrender.com/api/empresa/status?empresa_id=' + idDaEmpresa
+    );
+
+    if (!resposta.ok) return;
+
+    const dados = await resposta.json();
+    console.log("📦 Resposta do servidor:", dados);
+
+    const hoje = new Date();
+    const fimDoTrial = new Date(dados.trial_fim);
+    const trialAcabou = hoje > fimDoTrial;
+
+    const statusRuim = (dados.status_assinatura === 'expirado' || dados.status_assinatura === 'pendente');
+
+    if (statusRuim && trialAcabou) {
+      console.log("🚫 Bloqueando o acesso!");
+      mostrarBloqueio();
+    } else {
+      console.log("✅ Acesso liberado.");
+    }
+
+  } catch (erro) {
+    console.error('Erro ao verificar assinatura:', erro);
+  }
+}
+
+function mostrarBloqueio() {
+  const tela = document.getElementById('tela-bloqueio');
+  if (tela) {
+    tela.style.display = 'flex';
+  } else {
+    console.error("❌ ERRO: A div 'tela-bloqueio' não foi encontrada no HTML!");
+  }
+}
+
+function irParaAssinatura() {
+  alert('Aqui vai abrir a página de pagamento em breve!');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  verificarAssinatura();
+});
