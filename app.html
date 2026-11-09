@@ -402,5 +402,39 @@
   </button>
 </div>
 
+  <script>
+  // Função para verificar a assinatura direto no HTML
+  async function verificarBloqueioDireto() {
+    const usuarioSalvo = localStorage.getItem('tc-usuario-logado');
+    if (!usuarioSalvo) return; // Se não estiver logado, não faz nada
+
+    const usuario = JSON.parse(usuarioSalvo);
+    if (!usuario.empresa_id) return;
+
+    try {
+      const resposta = await fetch('https://tanocaixa-backend.onrender.com/api/empresa/status?empresa_id=' + usuario.empresa_id);
+      const dados = await resposta.json();
+
+      const hoje = new Date();
+      const fimDoTrial = new Date(dados.trial_fim);
+      
+      // Se o trial acabou e o status é ruim
+      if (hoje > fimDoTrial && (dados.status_assinatura === 'expirado' || dados.status_assinatura === 'pendente')) {
+        const telaBloqueio = document.getElementById('tela-bloqueio');
+        if (telaBloqueio) {
+            telaBloqueio.style.display = 'flex';
+        } else {
+            alert('BLOQUEIO ATIVADO: Sua assinatura expirou!');
+        }
+      }
+    } catch (erro) {
+      console.error("Erro ao verificar assinatura:", erro);
+    }
+  }
+
+  // Roda a verificação assim que a página carregar
+  document.addEventListener('DOMContentLoaded', verificarBloqueioDireto);
+</script>
+
 </body>
 </html>
