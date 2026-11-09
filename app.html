@@ -8,7 +8,7 @@
   <title>TanoCaixaApp</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='15' y='30' width='70' height='55' rx='12' fill='%23294b3b' /><rect x='10' y='20' width='80' height='20' rx='8' fill='%23d68c75' /><rect x='45' y='25' width='10' height='10' rx='2' fill='%23ffffff' /><path d='M35 55 H65 M50 55 V 75' stroke='%23ffffff' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>">
   <link rel="stylesheet" href="css/style.css">
-<script src="js/script.js" defer></script>
+<script src="js/app-novo.js" defer></script>
 </head>
 <body>
   <main class="container">
@@ -35,8 +35,40 @@
             <label for="login-senha">Senha</label>
             <input type="password" id="login-senha" placeholder="Sua senha" required>
           </div>
-          <button type="submit" class="botao-salvar botao-bloco">Entrar</button>
+          <button type="button" onclick="fazerLoginManual()" class="botao-salvar botao-bloco">Entrar</button>
         </form>
+        <script>
+          async function fazerLoginManual() {
+          // Pega o que foi digitado nos inputs (linhas 32 e 36 da sua foto)
+          const email = document.getElementById('login-email').value;
+          const senha = document.getElementById('login-senha').value;
+
+    try {
+      // Vai direto no servidor da Render
+      const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email, senha: senha })
+      });
+
+      const dados = await resposta.json();
+
+      if (dados.usuario) {
+        // Salva o usuário logado
+        localStorage.setItem('tc-usuario-logado', JSON.stringify(dados.usuario));
+        
+        // ATENÇÃO: Aqui você precisa colocar o nome do arquivo que abre o app.
+        // Se for o app.html mesmo, deixe assim. Se for outro, mude.
+        window.location.href = '/app.html'; 
+      } else {
+        alert("E-mail ou senha incorretos.");
+      }
+    } catch (erro) {
+      alert("Erro ao conectar com o servidor. Tente novamente.");
+    }
+  }
+</script>
+
         <p class="login-alternar" style="margin-top: 10px;">
           <a href="#" id="link-esqueci-senha">Esqueci minha senha</a>
         </p>
@@ -401,40 +433,6 @@
     Renovar agora
   </button>
 </div>
-
-  <script>
-  // Função para verificar a assinatura direto no HTML
-  async function verificarBloqueioDireto() {
-    const usuarioSalvo = localStorage.getItem('tc-usuario-logado');
-    if (!usuarioSalvo) return; // Se não estiver logado, não faz nada
-
-    const usuario = JSON.parse(usuarioSalvo);
-    if (!usuario.empresa_id) return;
-
-    try {
-      const resposta = await fetch('https://tanocaixa-backend.onrender.com/api/empresa/status?empresa_id=' + usuario.empresa_id);
-      const dados = await resposta.json();
-
-      const hoje = new Date();
-      const fimDoTrial = new Date(dados.trial_fim);
-      
-      // Se o trial acabou e o status é ruim
-      if (hoje > fimDoTrial && (dados.status_assinatura === 'expirado' || dados.status_assinatura === 'pendente')) {
-        const telaBloqueio = document.getElementById('tela-bloqueio');
-        if (telaBloqueio) {
-            telaBloqueio.style.display = 'flex';
-        } else {
-            alert('BLOQUEIO ATIVADO: Sua assinatura expirou!');
-        }
-      }
-    } catch (erro) {
-      console.error("Erro ao verificar assinatura:", erro);
-    }
-  }
-
-  // Roda a verificação assim que a página carregar
-  document.addEventListener('DOMContentLoaded', verificarBloqueioDireto);
-</script>
 
 </body>
 </html>
