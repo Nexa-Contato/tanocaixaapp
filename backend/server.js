@@ -3,6 +3,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const PDFDocument = require('pdfkit');
+const bcrypt = require('bcrypt');
 
 const app = express();
 app.use(cors());
@@ -40,10 +41,14 @@ app.post('/api/auth/cadastro', async (req, res) => {
       empresaId = novaEmpresa.rows[0].id;
     }
 
+    // Criptografar a senha antes de salvar (Segurança)
+    const salt = await bcrypt.genSalt(10);
+    const senhaHash = await bcrypt.hash(senha, salt);
+
     const cargo = convite.rows.length > 0 ? 'ajudante' : 'gestor';
     const novoUsuario = await pool.query(
-      'INSERT INTO membros (empresa_id, user_id, nome, email, cargo) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [empresaId, '00000000-0000-0000-0000-000000000000', nome, email, cargo]
+      'INSERT INTO membros (empresa_id, user_id, nome, email, senha, cargo) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [empresaId, '00000000-0000-0000-0000-000000000000', nome, email, senhaHash, cargo]
     );
 
     await pool.query(
@@ -65,11 +70,19 @@ app.post('/api/auth/login', async (req, res) => {
     if (resultado.rows.length === 0) return res.status(401).json({ erro: "E-mail não encontrado." });
     
     const usuario = resultado.rows[0];
+
+    // Se o usuário tem senha no banco (para não quebrar usuários antigos)
+    if (usuario.senha) {
+        const senhaValida = await bcrypt.compare(senha, usuario.senha);
+        if (!senhaValida) return res.status(401).json({ erro: "Senha incorreta." });
+    }
+
     res.json({ 
       mensagem: "Login realizado!", 
       usuario: { id: usuario.id, nome: usuario.nome, cargo: usuario.cargo, empresa_id: usuario.empresa_id } 
     });
   } catch (erro) {
+    console.error(erro);
     res.status(500).json({ erro: "Erro interno no servidor." });
   }
 });
@@ -396,11 +409,10 @@ app.get('/api/relatorio', async (req, res) => {
 });
 
 // ==========================================
-// PAGAMENTOS (ASAAS)
+// PAGAMENTOS (ASAAS) - ROTA ÚNICA E CORRETA
 // ==========================================
 app.post('/api/pagamento/assinar', async (req, res) => {
-  const { empresa_id, nome_empresa, email_gestor, cpf_cnpj } = req.body; // Adicionamos o cpf_cnpj aqui
-  console.log("👀 ESPIÃO: O CPF que chegou no servidor foi:", cpf_cnpj);
+  const { empresa_id, nome_empresa, email_gestor, cpf_cnpj } = req.body; 
   const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
   const ASAAS_URL = 'https://api.asaas.com/v3'; 
 
@@ -418,7 +430,7 @@ app.post('/api/pagamento/assinar', async (req, res) => {
         body: JSON.stringify({
           name: nome_empresa || empresaDb.rows[0].nome_fantasia,
           email: email_gestor,
-          cpfCnpj: cpf_cnpj, // AQUI: Enviando o CPF/CNPJ para o Asaas
+          cpfCnpj: cpf_cnpj, 
           externalReference: empresa_id
         })
       });
@@ -427,7 +439,7 @@ app.post('/api/pagamento/assinar', async (req, res) => {
       if (dadosCliente.errors) return res.status(400).json({ erro: "Erro no Asaas", detalhes: dadosCliente.errors });
       
       customerId = dadosCliente.id;
-      await pool.query('UPDATE empresas SET gateway_customer_id = $1, cpf_cnpj = $2 WHERE id = $3', [customerId, cpf_cnpj, empresa_id]); // Salva o ID do Asaas e o CPF no banco
+      await pool.query('UPDATE empresas SET gateway_customer_id = $1, cpf_cnpj = $2 WHERE id = $3', [customerId, cpf_cnpj, empresa_id]);
     }
 
     const respAssinatura = await fetch(`${ASAAS_URL}/subscriptions`, {
@@ -450,77 +462,6 @@ app.post('/api/pagamento/assinar', async (req, res) => {
     const dadosAssinatura = await respAssinatura.json();
     if (dadosAssinatura.errors) return res.status(400).json({ erro: "Erro no Asaas", detalhes: dadosAssinatura.errors });
 
-    const respCobrancas = await fetch(`${ASAAS_URL}/payments?subscription=${dadosAssinatura.id}`, {
-      headers: { 'access_token': ASAAS_API_KEY }
-    });
-    const dadosCobrancas = await respCobrancas.json();
-    const linkPagamento = dadosCobrancas.data[0]?.invoiceUrl;
-
-    res.json({ link_pagamento: linkPagamento });
-
-  } catch (erro) {
-    console.error(erro);
-    res.status(500).json({ erro: "Erro interno ao gerar pagamento." });
-  }
-});
-
-// ==========================================
-// PAGAMENTOS (ASAAS) - INÍCIO
-// ==========================================
-
-app.post('/api/pagamento/assinar', async (req, res) => {
-  const { empresa_id, nome_empresa, email_gestor } = req.body;
-  const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
-  const ASAAS_URL = 'https://api.asaas.com/v3'; 
-
-  try {
-    const empresaDb = await pool.query('SELECT gateway_customer_id, nome_fantasia FROM empresas WHERE id = $1', [empresa_id]);
-    let customerId = empresaDb.rows[0].gateway_customer_id;
-
-    // Cria o cliente no Asaas se não existir
-    if (!customerId) {
-      const respCliente = await fetch(`${ASAAS_URL}/customers`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'access_token': ASAAS_API_KEY
-        },
-        body: JSON.stringify({
-          name: nome_empresa || empresaDb.rows[0].nome_fantasia,
-          email: email_gestor,
-          externalReference: empresa_id
-        })
-      });
-      
-      const dadosCliente = await respCliente.json();
-      if (dadosCliente.errors) return res.status(400).json({ erro: "Erro no Asaas", detalhes: dadosCliente.errors });
-      
-      customerId = dadosCliente.id;
-      await pool.query('UPDATE empresas SET gateway_customer_id = $1 WHERE id = $2', [customerId, empresa_id]);
-    }
-
-    // Cria a assinatura mensal de 9.90
-    const respAssinatura = await fetch(`${ASAAS_URL}/subscriptions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'access_token': ASAAS_API_KEY
-      },
-      body: JSON.stringify({
-        customer: customerId,
-        billingType: 'UNDEFINED', 
-        value: 9.90,
-        nextDueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-        cycle: 'MONTHLY',
-        description: 'Assinatura TanoCaixaApp',
-        externalReference: empresa_id
-      })
-    });
-
-    const dadosAssinatura = await respAssinatura.json();
-    if (dadosAssinatura.errors) return res.status(400).json({ erro: "Erro no Asaas", detalhes: dadosAssinatura.errors });
-
-    // Pega o link para o cliente pagar
     const respCobrancas = await fetch(`${ASAAS_URL}/payments?subscription=${dadosAssinatura.id}`, {
       headers: { 'access_token': ASAAS_API_KEY }
     });
@@ -568,11 +509,9 @@ app.post('/api/pagamento/webhook', async (req, res) => {
 });
 
 // ==========================================
-// PAGAMENTOS (ASAAS) - FIM
+// INICIAR SERVIDOR
 // ==========================================
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
-
