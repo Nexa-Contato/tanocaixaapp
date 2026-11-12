@@ -576,38 +576,3 @@ app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
 
-// ==========================================
-// ROTA DE VERIFICAÇÃO DE ASSINATURA
-// ==========================================
-app.get('/api/empresa/status', async (req, res) => {
-  try {
-    const empresaId = req.query.empresa_id;
-
-    if (!empresaId) {
-      return res.status(400).json({ erro: 'empresa_id não enviado' });
-    }
-
-    const resultado = await pool.query(
-      'SELECT status_assinatura, data_criacao FROM empresas WHERE id = $1',
-      [empresaId]
-    );
-
-    if (resultado.rows.length === 0) {
-      return res.status(404).json({ erro: 'Empresa não encontrada' });
-    }
-
-    const empresa = resultado.rows[0];
-    const criadoEm = new Date(empresa.data_criacao);
-    const trialFim = new Date(criadoEm);
-    trialFim.setDate(trialFim.getDate() + 30);
-
-    res.json({
-      status_assinatura: empresa.status_assinatura,
-      trial_fim: trialFim.toISOString()
-    });
-
-  } catch (erro) {
-    console.error('Erro ao buscar status:', erro);
-    res.status(500).json({ erro: 'Erro interno' });
-  }
-});
