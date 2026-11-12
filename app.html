@@ -37,37 +37,7 @@
           </div>
           <button type="button" onclick="fazerLoginManual()" class="botao-salvar botao-bloco">Entrar</button>
         </form>
-        <script>
-          async function fazerLoginManual() {
-          // Pega o que foi digitado nos inputs (linhas 32 e 36 da sua foto)
-          const email = document.getElementById('login-email').value;
-          const senha = document.getElementById('login-senha').value;
 
-    try {
-      // Vai direto no servidor da Render
-      const resposta = await fetch("https://tanocaixa-backend.onrender.com/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email, senha: senha })
-      });
-
-      const dados = await resposta.json();
-
-      if (dados.usuario) {
-        // Salva o usuário logado
-        localStorage.setItem('tc-usuario-logado', JSON.stringify(dados.usuario));
-        
-        // ATENÇÃO: Aqui você precisa colocar o nome do arquivo que abre o app.
-        // Se for o app.html mesmo, deixe assim. Se for outro, mude.
-        window.location.href = '/app.html'; 
-      } else {
-        alert("E-mail ou senha incorretos.");
-      }
-    } catch (erro) {
-      alert("Erro ao conectar com o servidor. Tente novamente.");
-    }
-  }
-</script>
 
         <p class="login-alternar" style="margin-top: 10px;">
           <a href="#" id="link-esqueci-senha">Esqueci minha senha</a>
@@ -422,17 +392,6 @@
     </div>
 
   </main>
-
-<!-- Tela de bloqueio -->
-<div id="tela-bloqueio" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#ffffff; z-index:99999; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; font-family:sans-serif;">
-  <h1 style="font-size:28px; color:#333;">🔒 Sua assinatura expirou</h1>
-  <p style="font-size:16px; color:#666; max-width:400px;">
-    Para continuar usando o TanoCaixa, renove sua assinatura por apenas R$ 9,90/mês.
-  </p>
-  <button onclick="irParaAssinatura()" style="margin-top:20px; padding:14px 28px; font-size:16px; background:#22c55e; color:white; border:none; border-radius:8px; cursor:pointer;">
-    Renovar agora
-  </button>
-</div>
 
 </body>
 </html>
